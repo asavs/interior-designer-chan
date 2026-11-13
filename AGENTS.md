@@ -7,19 +7,19 @@ it does and how to run it. This file is what to know before changing it.
 
 These came from the people who use it. They outrank convenience.
 
-1. **Pictures, a dock, one button.** That is the whole app. Before adding a control, look for a gesture, a
+1. **One picture, a dock, one button.** That is the whole app. Before adding a control, look for a gesture, a
    default or an automatic step that makes it unnecessary. A feature that was removed for simplicity comes back
    only when someone using the app misses it.
 2. **Pictures before words.** Every flow begins with a photo, never with a name or a text box. Infer names and
    labels from the image. Do not ask questions the app can answer or skip.
-3. **No modes.** A picture of a room is always a live canvas. There is no "edit" screen to enter and no "done"
-   to press: things are dragged where they sit, in the page.
-4. **A room is a loom.** The room photo is the top of a thread. Making a design hangs it beneath the picture it
-   came from, beside any made there before, and any picture in the thread can be carried on or branched again.
+3. **No modes.** The picture on screen is always a live canvas. There is no "edit" screen to enter and no
+   "done" to press: things are dragged where they sit.
+4. **Sideways is another room; up and down are versions of this one.** A room's photo is at the top and each
+   design made from it follows, oldest to newest. There is no tree to navigate.
 5. **Things are playthings.** Whatever enters the library becomes a cut-out that can be dragged, resized,
    rotated and removed, and it stays that way after a design is made. Never leave the user with an object baked
    into a picture that they can no longer move.
-6. **Sideways means "another one of these".** Rooms, and the designs under a picture, are swiped between.
+6. **Nothing scrolls.** The app is one screen tall. Moving around is swiping between pictures.
 7. **iPhone first.** Touch targets of at least 44px, standard gestures, no hover-only affordances. Desktop must
    work well too, with a mouse equivalent for every gesture.
 8. **Calm, Japanese, a little kawaii.** Paper white, sumi ink, indigo accent, vermilion only as a small seal.
@@ -38,17 +38,17 @@ These came from the people who use it. They outrank convenience.
   has no image library.
 - A sticker placement is `{ x, y, w, rot, flip }` with `x`, `y`, `w` as fractions of the room photo, so layouts
   are independent of screen size. Later in the list means nearer the front.
-- A design stores the clean picture the model was given (`baseId`), its placements (`layout`), its things
-  (`itemIds`) and, when it differs from `baseId`, the picture it hangs under in the thread (`parentId`). A
-  design made from stickers is always drawn from the clean picture plus every sticker, never on top of rendered
-  pixels, which is what keeps its things movable.
-- Rooms, and the designs under one picture, are carousels (`Side` in `App.tsx`). The slide in view is the one
-  the page follows. Its page is set through a controller once the slides are measured, because the carousel
-  drops a starting page given before that.
-- Which design is followed under each picture, and arrangements in progress, are browser state only.
-- The canvas sits in the page with `touch-action: pan-x pan-y`, so a finger on the picture scrolls the page or
-  swipes sideways. Touching a thing holds it, and while a thing is held the canvas takes every touch so a second
-  finger anywhere can pinch.
+- A design stores the room photo the model was given (`baseId`), its placements (`layout`) and its things
+  (`itemIds`). Every design is drawn from the photo plus every sticker, never on top of rendered pixels, which
+  is what keeps its things movable and why versions need no parent.
+- Rooms are a horizontal carousel and the room in view holds a vertical carousel of its versions (`Pager` in
+  `App.tsx`). A neighbouring room renders only the version it was left on. A pager's page is set through a
+  controller once the slides are measured, because the carousel drops a starting page given before that.
+- Which version is in view in each room, and arrangements in progress, are browser state only.
+- A picture fills its slide at its true shape using container query units, so sticker positions, which are
+  fractions of the picture, stay right at any size.
+- The canvas has `touch-action: pan-x pan-y`, so a finger on the picture swipes between pictures. Touching a
+  thing holds it, and while a thing is held the canvas takes every touch so a second finger anywhere can pinch.
 - Derived images (`thumb`, `cutout`, `cutoutThumb`) are made by the browser and uploaded. Effects in `App.tsx`
   fill in any that are missing, which is how both new uploads and new designs get them.
 - The render route still accepts a text `prompt`, though the app sends none. It is where a "change the
