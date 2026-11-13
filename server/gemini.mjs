@@ -31,7 +31,9 @@ async function call(model, body, timeoutMs, retries = 3) {
       })
     } catch (e) {
       throw new UpstreamError(
-        e.name === 'TimeoutError' ? 'Gemini took too long to answer. Try again.' : 'Could not reach Gemini. Check the internet connection.',
+        e.name === 'TimeoutError'
+          ? 'Gemini took too long to answer. Try again.'
+          : 'Could not reach Gemini. Check the internet connection.',
       )
     }
     const json = await res.json().catch(() => null)
@@ -79,8 +81,8 @@ export async function renderDesign({ base, items, guide, prompt, quality }) {
     (guide
       ? 'Make the layout guide real.'
       : items.length
-      ? 'Place the items where they would naturally go in this room.'
-      : 'Furnish and style this room tastefully.')
+        ? 'Place the items where they would naturally go in this room.'
+        : 'Furnish and style this room tastefully.')
 
   const instructions = [
     'You are rendering an interior design visualisation for someone deciding what to buy for their home.',
@@ -94,7 +96,9 @@ export async function renderDesign({ base, items, guide, prompt, quality }) {
           'The LAYOUT GUIDE is the ROOM with rough cut-outs of the items pasted on by hand to show where each one goes. Treat it as a placement sketch, not as pixels to keep.',
           "For every cut-out in the guide, put that item in the same spot, covering about the same area of the picture, turned the same way, and as many times as it appears. Then make it physically real: a rug lies flat on the floor in the room's perspective, art hangs flat on the wall it was placed over, furniture stands on the floor with correct foreshortening, and nearer objects overlap farther ones.",
           'The result must show no cut-out edges, halos, flat pasted look or leftover background from the guide.',
-          items.some((i) => !i.placed) ? 'Items that do not appear in the guide go wherever they naturally belong, once each.' : '',
+          items.some((i) => !i.placed)
+            ? 'Items that do not appear in the guide go wherever they naturally belong, once each.'
+            : '',
         ]
           .filter(Boolean)
           .join(' ')
@@ -106,10 +110,14 @@ export async function renderDesign({ base, items, guide, prompt, quality }) {
     .filter(Boolean)
     .join('\n\n')
 
-  const json = await call(model, {
-    contents: [{ role: 'user', parts: [...sceneParts(base, items, guide), { text: instructions }] }],
-    generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
-  }, 180_000)
+  const json = await call(
+    model,
+    {
+      contents: [{ role: 'user', parts: [...sceneParts(base, items, guide), { text: instructions }] }],
+      generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+    },
+    180_000,
+  )
 
   const candidate = json.candidates?.[0]
   const parts = candidate?.content?.parts ?? []
@@ -121,7 +129,9 @@ export async function renderDesign({ base, items, guide, prompt, quality }) {
       .join(' ')
       .trim()
     const reason = json.promptFeedback?.blockReason || candidate?.finishReason
-    throw new UpstreamError(said || `The model returned no image${reason ? ` (${reason})` : ''}. Try rewording the request.`)
+    throw new UpstreamError(
+      said || `The model returned no image${reason ? ` (${reason})` : ''}. Try rewording the request.`,
+    )
   }
   return {
     bytes: Buffer.from(image.inlineData.data, 'base64'),
@@ -140,20 +150,24 @@ export async function suggestIdeas({ base, items }) {
     'For each: "title" is 2 to 4 words. "prompt" is one or two sentences telling an image editor exactly what to place and where, referring to items by name and to real features of this room (the window, the left wall, the corner by the door).',
   ].join('\n\n')
 
-  const json = await call(TEXT_MODEL, {
-    contents: [{ role: 'user', parts: [...sceneParts(base, items), { text: brief }] }],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: 'ARRAY',
-        items: {
-          type: 'OBJECT',
-          properties: { title: { type: 'STRING' }, prompt: { type: 'STRING' } },
-          required: ['title', 'prompt'],
+  const json = await call(
+    TEXT_MODEL,
+    {
+      contents: [{ role: 'user', parts: [...sceneParts(base, items), { text: brief }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: { title: { type: 'STRING' }, prompt: { type: 'STRING' } },
+            required: ['title', 'prompt'],
+          },
         },
       },
     },
-  }, 60_000)
+    60_000,
+  )
 
   const text = (json.candidates?.[0]?.content?.parts ?? [])
     .filter((p) => p.text && !p.thought)

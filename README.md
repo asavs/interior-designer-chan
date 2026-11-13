@@ -21,26 +21,27 @@ npm run phone            # build and serve on http://localhost:8787
 The server prints the addresses other devices can use. On an iPhone, open one in Safari and choose
 Share → Add to Home Screen to get an app icon.
 
-| Command | |
-| --- | --- |
-| `npm run phone` | Stop any running server, build, and serve the app |
-| `npm run dev` | API on :8787 and Vite on :5173 with hot reload |
-| `npm run build` | Type-check and build the front end into `dist/` |
-| `npm start` | Serve the last build |
-| `npm run stop` | Stop the server on the app's port |
+| Command          |                                                   |
+| ---------------- | ------------------------------------------------- |
+| `npm run phone`  | Stop any running server, build, and serve the app |
+| `npm run dev`    | API on :8787 and Vite on :5173 with hot reload    |
+| `npm run build`  | Type-check and build the front end into `dist/`   |
+| `npm start`      | Serve the last build                              |
+| `npm run stop`   | Stop the server on the app's port                 |
+| `npm run format` | Format the code with Prettier                     |
 
 ## Configuration
 
 Read from the environment or from `.env`.
 
-| Variable | Default | |
-| --- | --- | --- |
-| `DESIGNER_CHAN_GEMINI_KEY` | falls back to `GEMINI_API_KEY` | Gemini API key for this app |
-| `PORT` | `8787` | |
-| `DATA_DIR` | `./data` | Photos, designs and `db.json` |
-| `IMAGE_MODEL_FAST` | `gemini-3.1-flash-image` | Quick designs and cut-outs |
-| `IMAGE_MODEL_BEST` | `gemini-3-pro-image` | Best-quality designs |
-| `TEXT_MODEL` | `gemini-3.8-flash` | Naming photos and suggesting ideas |
+| Variable                   | Default                        |                                    |
+| -------------------------- | ------------------------------ | ---------------------------------- |
+| `DESIGNER_CHAN_GEMINI_KEY` | falls back to `GEMINI_API_KEY` | Gemini API key for this app        |
+| `PORT`                     | `8787`                         |                                    |
+| `DATA_DIR`                 | `./data`                       | Photos, designs and `db.json`      |
+| `IMAGE_MODEL_FAST`         | `gemini-3.1-flash-image`       | Quick designs and cut-outs         |
+| `IMAGE_MODEL_BEST`         | `gemini-3-pro-image`           | Best-quality designs               |
+| `TEXT_MODEL`               | `gemini-3.8-flash`             | Naming photos and suggesting ideas |
 
 ## How it works
 
@@ -48,8 +49,10 @@ Read from the environment or from `.env`.
   not obvious.
 - **Things** are cut out when added. A plain backdrop is removed in the browser. A busy photo is sent to the image
   model, which redraws the object on a flat colour that the browser then removes.
-- **Arranging** happens on a full-screen canvas: one finger drags, two fingers resize and rotate, with a corner
-  handle and scroll wheel for a mouse.
+- **Arranging** happens on a full-screen canvas: one finger drags, two fingers resize and rotate. With a mouse,
+  a corner handle turns and resizes, the scroll wheel resizes, arrow keys nudge and Delete removes.
+- **On a wide screen** the room picture sits beside the things library, and photos can be dropped onto any
+  add tile.
 - **Make it real** sends the room photo, the rough collage and the original photos of the things to the image
   model, asking it to keep each thing where it was put and make it physically believable.
 - **Designs** remember their pieces, so reopening one brings back the original room photo with every sticker

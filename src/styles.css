@@ -1002,7 +1002,6 @@ h2.title {
   box-shadow: var(--shadow);
 }
 
-
 /* ---- viewer: top bar, compare switch, next steps ---- */
 
 .viewer-bar {
@@ -1134,7 +1133,12 @@ h2.title {
   font-size: 12px;
   font-weight: 500;
   text-align: center;
-  background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--card) 70%, transparent) 50%, transparent 70%);
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in srgb, var(--card) 70%, transparent) 50%,
+    transparent 70%
+  );
   background-size: 300% 100%;
   animation: shimmer 1.8s linear infinite;
 }
@@ -1146,5 +1150,228 @@ h2.title {
 @media (prefers-reduced-motion: reduce) {
   .cutting::before {
     animation: none;
+  }
+}
+
+/* ---- pointer-specific hints ---- */
+
+.mouse-only {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mouse-only {
+    display: inline;
+  }
+
+  .touch-only {
+    display: none;
+  }
+
+  .thumb:hover,
+  .tile:hover,
+  .roomchip:hover,
+  .chip:hover,
+  .ghost:hover,
+  .next:hover,
+  .addzone:hover,
+  .addtile:hover {
+    border-color: var(--muted);
+  }
+
+  .primary:hover,
+  .next.main:hover {
+    filter: brightness(1.08);
+    border-color: var(--accent);
+  }
+}
+
+.dropping {
+  border-color: var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 8%, var(--card));
+}
+
+/* ---- wide screens: the picture on the left, the library on the right ---- */
+
+@media (min-width: 900px) {
+  .app {
+    position: relative;
+    max-width: 1240px;
+    padding: 0 32px 48px;
+  }
+
+  .top {
+    padding-top: 22px;
+  }
+
+  .tabs {
+    position: absolute;
+    top: 14px;
+    right: 32px;
+    bottom: auto;
+    left: auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .tabs button {
+    flex: none;
+    padding: 0 18px;
+  }
+
+  .status {
+    margin-right: 190px;
+  }
+
+  .rooms,
+  .strip {
+    margin: 0;
+    padding: 2px 0;
+  }
+
+  .rooms {
+    flex-wrap: wrap;
+  }
+
+  .start {
+    max-width: 640px;
+    margin: 56px auto 0;
+  }
+
+  .room-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+    gap: 40px;
+    align-items: start;
+    margin-top: 12px;
+  }
+
+  .room-main {
+    position: sticky;
+    top: 16px;
+  }
+
+  /* The picture keeps its true shape so stickers stay where they were put; it shrinks to fit the window. */
+  .hero {
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .hero .stage-photo {
+    width: auto;
+    max-width: 100%;
+    max-height: 72vh;
+  }
+
+  .room-side .step {
+    margin-top: 0;
+  }
+
+  .room-side .strip {
+    flex-wrap: wrap;
+  }
+
+  .room-side .thumb.pick,
+  .room-side .strip .addtile {
+    width: 96px;
+    height: 96px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 14px;
+  }
+
+  .things {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+
+  .toast {
+    left: auto;
+    right: 32px;
+    bottom: 32px;
+    margin: 0;
+  }
+
+  /* arranging: canvas on the left, tools and tray in a side panel */
+  .arranger {
+    display: grid;
+    grid-template: 'bar bar' auto 'box foot' minmax(0, 1fr) / minmax(0, 1fr) 320px;
+  }
+
+  .arranger-bar {
+    grid-area: bar;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .arranger-box {
+    grid-area: box;
+    padding: 24px;
+  }
+
+  .arranger-foot {
+    grid-area: foot;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 20px;
+    border-left: 1px solid var(--line);
+    overflow-y: auto;
+  }
+
+  .tools {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    min-height: 0;
+    margin: 0 0 12px;
+  }
+
+  .tools .ghost {
+    flex: 1 1 40%;
+    max-width: none;
+  }
+
+  .tray {
+    flex-wrap: wrap;
+    align-content: flex-start;
+    overflow: visible;
+  }
+
+  .tray .thumb {
+    width: 84px;
+    height: 84px;
+  }
+
+  /* looking at one picture: the picture on the left, what to do with it on the right */
+  .viewer {
+    display: grid;
+    grid-template: 'bar bar' auto 'stage panel' minmax(0, 1fr) / minmax(0, 1fr) 380px;
+  }
+
+  .viewer-bar {
+    grid-area: bar;
+    padding: 8px 16px;
+  }
+
+  .viewer .stage {
+    grid-area: stage;
+    padding: 0 24px 24px;
+  }
+
+  .panel {
+    grid-area: panel;
+    max-width: none;
+    margin: 0;
+    padding: 24px;
+    overflow-y: auto;
+  }
+
+  .recipe {
+    flex-wrap: wrap;
   }
 }

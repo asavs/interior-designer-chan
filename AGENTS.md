@@ -40,7 +40,7 @@ These came from the people who use it. They outrank convenience.
 
 ## Conventions
 
-- TypeScript in `src/`, plain ES modules in `server/`. Two-space indent, single quotes, no semicolons.
+- TypeScript in `src/`, plain ES modules in `server/`. Formatting is Prettier's: run `npm run format`.
 - Keep the server dependency-free. Adding a front-end dependency needs a reason a reader would accept.
 - Comments explain why, not what. Docs describe the code as it is: no history, no "previously", no notes about
   how a change was made. Commit messages carry the past.
@@ -52,6 +52,7 @@ These came from the people who use it. They outrank convenience.
 ## Checking your work
 
 ```
+npm run format       # Prettier
 npm run build        # type-check and build
 npm run phone        # serve the build on :8787
 ```

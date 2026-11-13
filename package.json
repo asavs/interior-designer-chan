@@ -11,7 +11,8 @@
     "build": "tsc --noEmit && vite build",
     "start": "node --env-file-if-exists=.env server/index.mjs",
     "phone": "npm run stop && npm run build && npm start",
-    "stop": "node server/stop.mjs"
+    "stop": "node server/stop.mjs",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "react": "^19.3.1",
@@ -22,6 +23,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
     "concurrently": "^10.0.7",
+    "prettier": "^3.10.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.8"
   }
