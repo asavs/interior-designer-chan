@@ -2,6 +2,9 @@
   "name": "interior-designer-chan",
   "private": true,
   "version": "0.1.0",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "description": "See furniture, rugs and art in photos of your own rooms before you buy them.",
+  "repository": "github:asavs/interior-designer-chan",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n api,web \"node --watch --env-file-if-exists=.env server/index.mjs\" \"vite\"",

@@ -48,3 +48,8 @@ screen recording helps most. Please do not attach photos you would not want publ
 
 Calls to the image model cost money on the key in your `.env`. Never commit `.env`, the `data/` folder, or
 anyone's photos.
+
+## License
+
+By contributing you agree that your contribution is shared under the project's
+[PolyForm Noncommercial 1.0.0](LICENSE.md) license.

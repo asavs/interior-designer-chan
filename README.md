@@ -76,5 +76,10 @@ when a room or thing is named, a busy photo is cut out, ideas are suggested, or 
 There is no login. Anyone who can reach the server can use it and spend the API key, so keep it on a network you
 trust.
 
+## License
+
+[PolyForm Noncommercial 1.0.0](LICENSE.md). You may use, change and share it for any noncommercial purpose. You may
+not sell it or use it commercially.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) to work on it and [AGENTS.md](AGENTS.md) for the conventions coding agents
 follow here.
