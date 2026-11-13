@@ -12,6 +12,7 @@
   --shadow: 0 1px 2px rgb(30 40 60 / 0.05), 0 6px 20px rgb(30 40 60 / 0.06);
   --serif: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', 'Iowan Old Style', Georgia, serif;
   --sans: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', 'Segoe UI', Roboto, sans-serif;
+  --dock: 92px;
   color-scheme: light dark;
 }
 
@@ -47,16 +48,13 @@ body {
 }
 
 button,
-input,
-textarea {
+input {
   font: inherit;
   color: inherit;
 }
 
 button,
-label,
-a,
-summary {
+label {
   cursor: pointer;
 }
 
@@ -74,8 +72,7 @@ img {
   display: block;
 }
 
-h2,
-h3 {
+h2 {
   font-family: var(--serif);
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -94,9 +91,9 @@ h3 {
 /* ---- shell ---- */
 
 .app {
-  max-width: 720px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 0 18px calc(88px + env(safe-area-inset-bottom));
+  padding: 0 18px calc(var(--dock) + 28px + env(safe-area-inset-bottom));
 }
 
 .splash {
@@ -114,7 +111,7 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(16px + env(safe-area-inset-top)) 0 12px;
+  padding: calc(16px + env(safe-area-inset-top)) 0 6px;
 }
 
 .top h1 {
@@ -122,258 +119,25 @@ h3 {
   align-items: center;
   gap: 8px;
   margin: 0;
-  font: 600 22px/1 var(--serif);
+  font: 600 18px/1 var(--serif);
   letter-spacing: 0.02em;
+  color: var(--muted);
 }
 
 /* The "chan" seal, like a maker's stamp on the corner of a print. */
 .top h1 span {
   display: inline-block;
-  padding: 5px 5px 4px;
+  padding: 4px 4px 3px;
   border-radius: 4px;
   background: var(--seal);
   color: #fff;
-  font: 600 11px/1 var(--sans);
+  font: 600 10px/1 var(--sans);
   letter-spacing: 0.04em;
 }
 
 .status {
   color: var(--muted);
   font-size: 14px;
-}
-
-.tabs {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 5;
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px 18px calc(8px + env(safe-area-inset-bottom));
-  background: color-mix(in srgb, var(--paper) 90%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-top: 1px solid var(--line);
-}
-
-.tabs button {
-  position: relative;
-  flex: 1;
-  max-width: 200px;
-  min-height: 46px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-weight: 500;
-  letter-spacing: 0.04em;
-}
-
-.tabs button[aria-pressed='true'] {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-.tabs button[aria-pressed='true']::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 4px;
-  width: 22px;
-  height: 2px;
-  margin-left: -11px;
-  background: var(--seal);
-}
-
-.tabs small {
-  margin-left: 6px;
-  opacity: 0.7;
-  font-weight: 400;
-}
-
-/* ---- pieces ---- */
-
-.card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.fine {
-  margin: 10px 2px 0;
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.chip {
-  flex: none;
-  min-height: 40px;
-  padding: 0 16px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--card);
-  white-space: nowrap;
-}
-
-.primary,
-.ghost {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 46px;
-  padding: 0 18px;
-  border-radius: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.primary {
-  border: 0;
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-.ghost {
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--ink);
-  font-weight: 500;
-}
-
-.ghost[aria-pressed='true'] {
-  background: var(--soft);
-  border-color: var(--muted);
-}
-
-.ghost.small {
-  min-height: 36px;
-  padding: 0 12px;
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.ghost.danger {
-  color: var(--seal);
-}
-
-.grow {
-  flex: 1;
-}
-
-input,
-textarea {
-  width: 100%;
-  min-width: 0;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--card);
-}
-
-textarea {
-  display: block;
-  resize: vertical;
-}
-
-::placeholder {
-  color: var(--muted);
-  opacity: 0.75;
-}
-
-.field {
-  padding: 8px 10px;
-  border-color: transparent;
-  background: transparent;
-}
-
-.field:hover,
-.field:focus {
-  border-color: var(--line);
-  background: var(--card);
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin-top: 12px;
-}
-
-/* ---- rooms ---- */
-
-.rooms,
-.strip {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  margin: 0 -18px;
-  padding: 2px 18px;
-}
-
-.rooms::-webkit-scrollbar,
-.strip::-webkit-scrollbar {
-  display: none;
-}
-
-.roomchip {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 46px;
-  padding: 4px 14px 4px 4px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--card);
-  white-space: nowrap;
-}
-
-.roomchip img,
-.roomchip .blank {
-  width: 38px;
-  height: 38px;
-  border-radius: 7px;
-  object-fit: cover;
-  background: var(--soft);
-}
-
-.roomchip[aria-pressed='true'] {
-  border-color: var(--ink);
-}
-
-.roomchip.add {
-  padding-left: 14px;
-  border-style: dashed;
-  color: var(--muted);
-}
-
-.roomhead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.title {
-  flex: 1;
-  margin: 0;
-  font: 600 28px/1.2 var(--serif);
-  letter-spacing: 0.01em;
-}
-
-input.title {
-  padding: 4px 8px;
-  margin-left: -8px;
-}
-
-h2.title {
-  padding: 4px 0;
 }
 
 .start {
@@ -391,29 +155,119 @@ h2.title {
   color: var(--muted);
 }
 
-.question {
-  margin-top: 14px;
+/* ---- small pieces ---- */
+
+.primary,
+.ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
-.question h3,
-.step {
-  margin: 0;
-  font-size: 19px;
-  line-height: 1.3;
+.primary {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
 }
 
-.step {
-  margin: 28px 2px 12px;
+.ghost {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-weight: 500;
 }
 
-.suggest {
+.ghost.small {
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+::placeholder {
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.field {
+  border-color: transparent;
+  background: transparent;
+}
+
+.field:hover,
+.field:focus {
+  border-color: var(--line);
+  background: var(--card);
+}
+
+.strip {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
-  margin: 14px 0 0;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-/* ---- adding photos ---- */
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+.thumb {
+  position: relative;
+  flex: none;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--soft);
+  overflow: hidden;
+}
+
+.thumb img,
+.tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 5px;
+}
+
+.addtile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: auto;
+  min-width: 64px;
+  padding: 0 12px;
+  border: 1px dashed color-mix(in srgb, var(--muted) 55%, transparent);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.addtile .plus {
+  font-size: 20px;
+  font-weight: 300;
+  line-height: 1;
+}
 
 .addzone {
   display: flex;
@@ -421,7 +275,7 @@ h2.title {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 140px;
+  min-height: 44vh;
   padding: 20px;
   border: 1px dashed color-mix(in srgb, var(--muted) 55%, transparent);
   border-radius: 12px;
@@ -429,10 +283,6 @@ h2.title {
   color: var(--muted);
   font-size: 14px;
   text-align: center;
-}
-
-.addzone.big {
-  min-height: 44vh;
 }
 
 .addzone .plus {
@@ -454,225 +304,132 @@ h2.title {
   font: 600 18px/1.3 var(--serif);
 }
 
-/* ---- thumbnails ---- */
+.dropping {
+  border-color: var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 8%, var(--card));
+}
 
-.thumb {
+/* ---- the room's name, which is also the way to other rooms ---- */
+
+.roomhead {
+  display: flex;
+  margin: 6px 0 10px;
+}
+
+.title {
+  margin: 0;
+  font: 600 28px/1.2 var(--serif);
+  letter-spacing: 0.01em;
+}
+
+.roomname {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.roomname span {
+  color: var(--muted);
+  font-size: 18px;
+}
+
+input.title {
+  padding: 4px 8px;
+  margin-left: -8px;
+}
+
+.menu {
+  z-index: 30;
+  min-width: 200px;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  outline: none;
+}
+
+.menu [role^='menuitem'] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.menu [role^='menuitem'][data-highlighted],
+.menu [role^='menuitem']:hover,
+.menu [role^='menuitem']:focus-visible {
+  background: var(--soft);
+}
+
+.menu [data-destructive] {
+  color: var(--seal);
+}
+
+.menu [aria-disabled='true'] {
+  opacity: 0.4;
+}
+
+.menu-room img,
+.menu-room .blank {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  object-fit: cover;
+  background: var(--soft);
+}
+
+.menu-room .tick {
+  margin-left: auto;
+  color: var(--accent);
+}
+
+.menu-rule {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--line);
+}
+
+/* ---- the loom: a thread of pictures, each one a live canvas ---- */
+
+.level + .level {
+  margin-top: 18px;
+}
+
+.node {
+  scroll-margin-top: 12px;
+}
+
+.node-pic {
   position: relative;
-  flex: none;
-  width: 76px;
-  height: 76px;
-  padding: 0;
-  border: 2px solid transparent;
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--soft);
   overflow: hidden;
 }
 
-.thumb.small {
-  width: 52px;
-  height: 52px;
-  border-radius: 8px;
+/* A finger on the picture scrolls the page or swipes sideways; a finger on a thing moves it. While a thing is
+   held the picture takes every touch, so a second finger anywhere can pinch and twist. */
+.canvas {
+  position: relative;
+  touch-action: pan-x pan-y;
 }
 
-.thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.canvas.holding {
+  touch-action: none;
 }
-
-.thumb[aria-pressed='true'] {
-  border-color: var(--accent);
-}
-
-.thumb.pick[aria-pressed='false'] img {
-  opacity: 0.55;
-}
-
-.thumb.pick[aria-pressed='true']::after {
-  content: '✓';
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 20px;
-  text-align: center;
-}
-
-.cut {
-  background-color: var(--soft);
-}
-
-.thumb.cut img,
-.tile.cut img {
-  object-fit: contain;
-  padding: 6px;
-}
-
-.addtile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: auto;
-  min-width: 76px;
-  padding: 0 12px;
-  border: 1px dashed color-mix(in srgb, var(--muted) 55%, transparent);
-  background: transparent;
-  color: var(--muted);
-  font-size: 13px;
-  text-align: center;
-}
-
-.addtile .plus {
-  font-size: 20px;
-  font-weight: 300;
-  line-height: 1;
-}
-
-.views {
-  margin-top: 10px;
-}
-
-.views .thumb {
-  width: 64px;
-  height: 48px;
-  border-radius: 8px;
-}
-
-.views .addtile {
-  width: auto;
-  min-width: 64px;
-  flex-direction: row;
-  gap: 6px;
-}
-
-/* ---- the room picture ---- */
-
-.tag {
-  position: absolute;
-  left: 10px;
-  top: 10px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  background: rgb(20 24 30 / 0.72);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.03em;
-}
-
-.pill {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgb(20 24 30 / 0.78);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-
-.go {
-  margin-top: 16px;
-}
-
-.go .primary {
-  min-height: 54px;
-  font-size: 17px;
-}
-
-.words {
-  margin-top: 16px;
-  border-top: 1px solid var(--line);
-  padding-top: 4px;
-}
-
-.words summary {
-  padding: 10px 2px;
-  color: var(--muted);
-  font-size: 15px;
-  list-style: none;
-}
-
-.words summary::-webkit-details-marker {
-  display: none;
-}
-
-.words summary::before {
-  content: '+ ';
-}
-
-.words[open] summary::before {
-  content: '– ';
-}
-
-.ideas {
-  display: grid;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.idea {
-  display: grid;
-  gap: 2px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--card);
-  text-align: left;
-}
-
-.idea[aria-pressed='true'] {
-  border-color: var(--accent);
-}
-
-.idea b {
-  font: 600 16px/1.3 var(--serif);
-}
-
-.idea span {
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.seg {
-  display: flex;
-  padding: 3px;
-  border-radius: 10px;
-  background: var(--soft);
-}
-
-.seg button {
-  min-height: 40px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  font-weight: 500;
-}
-
-.seg button[aria-pressed='true'] {
-  background: var(--card);
-  color: var(--ink);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
-}
-
-/* ---- stickers ---- */
 
 .stage-photo {
   width: 100%;
   height: auto;
+  pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -680,6 +437,7 @@ h2.title {
 
 .sticker {
   position: absolute;
+  cursor: grab;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -701,16 +459,47 @@ h2.title {
   border-radius: 2px;
 }
 
+/* On a finished design the things are still there to grab, just not drawn. */
+.sticker.unseen img {
+  opacity: 0;
+}
+
+/* A tap on a finished design lifts its things into view over the picture. */
+.sticker.peek {
+  outline: 1.5px dashed rgb(255 255 255 / 0.9);
+  outline-offset: 2px;
+}
+
+.sticker.peek img {
+  opacity: 0.8;
+}
+
+.remove,
 .handle {
   position: absolute;
-  right: -20px;
-  bottom: -20px;
-  width: 34px;
-  height: 34px;
-  border: 3px solid #fff;
+  width: 32px;
+  height: 32px;
+  border: 2px solid #fff;
   border-radius: 50%;
-  background: var(--accent);
   box-shadow: 0 1px 6px rgb(0 0 0 / 0.4);
+}
+
+.remove {
+  left: -18px;
+  top: -18px;
+  display: grid;
+  place-items: center;
+  background: #14181e;
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.handle {
+  right: -18px;
+  bottom: -18px;
+  background: var(--accent);
   cursor: nwse-resize;
 }
 
@@ -721,86 +510,178 @@ h2.title {
   }
 }
 
-.tools {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: center;
-  min-height: 46px;
-  margin: 0 0 10px;
-}
-
-.tools .ghost {
-  flex: 1;
-  max-width: 120px;
-  padding: 0 8px;
-}
-
-/* ---- grids ---- */
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
-}
-
-.tile {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 4 / 3;
-  padding: 0;
+.more,
+.pill {
+  position: absolute;
   border: 0;
-  border-radius: 10px;
-  background: var(--soft);
-  overflow: hidden;
+  background: rgb(20 24 30 / 0.66);
+  color: #fff;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-.tile img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.more {
+  top: 8px;
+  right: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.05em;
 }
 
-.things {
-  margin-top: 12px;
-}
-
-.things .tile {
-  aspect-ratio: 1;
-}
-
-.thing .field {
-  margin-top: 2px;
-  font-size: 15px;
-}
-
-.tile.addtile {
-  min-height: 0;
-  border: 1px dashed color-mix(in srgb, var(--muted) 55%, transparent);
-  background: transparent;
+.pill {
+  right: 10px;
+  bottom: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .heart {
   position: absolute;
-  right: 8px;
-  top: 6px;
+  left: 12px;
+  top: 8px;
   color: var(--seal);
-  font-size: 18px;
-  text-shadow: 0 0 3px #fff;
+  font-size: 22px;
+  text-shadow: 0 0 4px #fff;
+}
+
+/* ---- side by side: rooms, and the designs under a picture ---- */
+
+.side {
+  position: relative;
+}
+
+.side-view {
+  transition: height 0.25s ease;
+  scrollbar-width: none;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.side-view::-webkit-scrollbar {
+  display: none;
+}
+
+/* Slides keep their own height, so a short picture is not stretched to match a tall neighbour. */
+.side-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.slide {
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.dots button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.dots button::before,
+.dot-making {
+  content: '';
+  display: block;
+  width: 7px;
+  height: 7px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.dots button[aria-current]::before {
+  background: var(--ink);
+}
+
+.dot-making {
+  margin: 0 7px;
+  background: var(--accent);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Arrows are for a mouse; a finger swipes. */
+.arrow {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .arrow {
+    position: absolute;
+    top: calc(50% - 30px);
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 50%;
+    background: rgb(20 24 30 / 0.6);
+    color: #fff;
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .arrow.prev {
+    left: 10px;
+  }
+
+  .arrow.next {
+    right: 10px;
+  }
+
+  .arrow[aria-disabled='true'] {
+    display: none;
+  }
+
+  .ghost:hover,
+  .thumb:hover,
+  .tile:hover,
+  .addzone:hover {
+    border-color: var(--muted);
+  }
+
+  .primary:hover {
+    filter: brightness(1.08);
+  }
 }
 
 .pending {
   display: grid;
   place-items: center;
-  padding: 12px;
   color: var(--muted);
   font-size: 13px;
   text-align: center;
   background: linear-gradient(100deg, var(--soft) 30%, var(--card) 50%, var(--soft) 70%);
   background-size: 300% 100%;
   animation: shimmer 1.8s linear infinite;
+}
+
+.making {
+  min-height: 180px;
+  margin-top: 18px;
 }
 
 @keyframes shimmer {
@@ -812,220 +693,101 @@ h2.title {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pending {
-    animation: none;
-  }
-}
+/* ---- the dock: your things, and the one button ---- */
 
-/* ---- viewer ---- */
-
-.viewer {
+.dock {
   position: fixed;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 10;
   display: flex;
-  flex-direction: column;
-  background: var(--paper);
+  align-items: center;
+  gap: 10px;
+  padding: 12px max(14px, calc((100vw - 760px) / 2 + 18px)) calc(12px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
 }
 
-.stage {
-  position: relative;
+.dock-things {
   flex: 1;
-  min-height: 0;
-  display: grid;
-  place-items: center;
-  padding: calc(8px + env(safe-area-inset-top)) 8px 8px;
-  background: #111419;
+  min-width: 0;
 }
 
-.stage img {
-  max-width: 100%;
-  max-height: 100%;
-  min-height: 0;
-  object-fit: contain;
-  border-radius: 4px;
-}
-
-.stage img.cutout {
-  background: repeating-conic-gradient(#2a2f37 0% 25%, #1f232a 0% 50%) 50% / 24px 24px;
-}
-
-.stage .tag {
-  top: calc(16px + env(safe-area-inset-top));
-  left: 16px;
-}
-
-.panel {
-  width: 100%;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 12px 18px calc(14px + env(safe-area-inset-bottom));
-}
-
-.panel .strip {
-  margin-top: 8px;
-}
-
-.said {
-  margin: 0;
-  max-height: 5.8em;
-  overflow-y: auto;
-  font-family: var(--serif);
-  font-size: 17px;
-}
-
-.fields {
-  display: grid;
-  gap: 6px;
-}
-
-.fields .field {
-  border-color: var(--line);
-}
-
-/* Designer-chan speaking: a face, then a speech bubble. */
-.toast {
-  position: fixed;
-  left: 18px;
-  right: 18px;
-  bottom: calc(84px + env(safe-area-inset-bottom));
-  z-index: 20;
-  display: block;
-  max-width: 560px;
-  margin: 0 auto;
+.shelf-toggle {
+  flex: none;
+  width: 40px;
+  min-height: 64px;
   padding: 0;
-  border: 0;
-  background: none;
-  text-align: left;
-}
-
-.toast .kao {
-  margin: 0 0 2px;
   color: var(--muted);
 }
 
-.bubble {
-  display: block;
-  width: fit-content;
-  max-width: 100%;
-  padding: 12px 16px;
-  border: 1px solid var(--line);
-  border-radius: 16px 16px 16px 4px;
-  background: var(--card);
-  color: var(--ink);
-  box-shadow: var(--shadow);
+.make {
+  flex: none;
+  min-height: 64px;
+  padding: 0 20px;
+  font-size: 16px;
 }
 
-/* ---- viewer: top bar, compare switch, next steps ---- */
+/* The dock pulled up: every thing, with its name and its few options. */
+.shelf {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--dock) - 3px + env(safe-area-inset-bottom));
+  z-index: 9;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding: 14px max(14px, calc((100vw - 760px) / 2 + 18px)) 18px;
+  border-top: 1px solid var(--line);
+  border-radius: 16px 16px 0 0;
+  background: var(--card);
+  box-shadow: 0 -8px 30px rgb(30 40 60 / 0.12);
+}
 
-.viewer-bar {
+.shelf-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.shelf-head h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.tile {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--soft);
+  overflow: hidden;
+}
+
+.thing-row {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: calc(6px + env(safe-area-inset-top)) 8px 6px;
-  background: #111419;
-  color: #eceef0;
+  margin-top: 4px;
 }
 
-.bar-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
+.thing-row .field {
   font-size: 15px;
-  text-decoration: none;
 }
 
-.bar-btn.close {
-  font-size: 18px;
-}
-
-.bar-btn[aria-pressed='true'] {
-  color: #e2604d;
-}
-
-.viewer .stage {
-  padding-top: 0;
-}
-
-.compare {
-  position: absolute;
-  left: 50%;
-  bottom: 14px;
-  transform: translateX(-50%);
-  background: rgb(20 24 30 / 0.78);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-
-.compare button {
-  min-height: 36px;
-  color: #c9ced6;
-}
-
-.compare button[aria-pressed='true'] {
-  background: #fff;
-  color: #14181e;
-}
-
-.recipe {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-}
-
-.recipe .said {
-  font-size: 15px;
-  color: var(--muted);
-}
-
-.panel .fine {
-  margin: 12px 2px 8px;
-}
-
-.next {
-  display: grid;
-  gap: 2px;
-  width: 100%;
-  margin-top: 8px;
-  padding: 13px 16px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--card);
-  text-align: left;
-}
-
-.next b {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.next span {
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.next.main {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-.next.main span {
-  color: inherit;
-  opacity: 0.8;
-}
-
-/* ---- a thing still being cut out: the photo waits under a veil, so it never shows up as a square sticker ---- */
-
+/* A thing still being cut out: the photo waits under a veil, so it never shows up as a square sticker. */
 .cutting {
   position: relative;
   opacity: 1;
@@ -1045,378 +807,70 @@ h2.title {
   place-items: center;
   padding: 4px;
   color: var(--ink);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   text-align: center;
-  background: linear-gradient(
-    100deg,
-    transparent 30%,
-    color-mix(in srgb, var(--card) 70%, transparent) 50%,
-    transparent 70%
-  );
-  background-size: 300% 100%;
-  animation: shimmer 1.8s linear infinite;
 }
 
-.stage img.cutting {
-  opacity: 0.5;
+/* ---- Designer-chan speaking: a face, then a speech bubble ---- */
+
+.toast {
+  position: fixed;
+  left: 18px;
+  right: 18px;
+  bottom: calc(var(--dock) + 14px + env(safe-area-inset-bottom));
+  z-index: 20;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.bubble {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px 16px 16px 4px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.toast .kao {
+  margin: 0 0 2px;
+  color: var(--muted);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cutting::before {
+  .pending,
+  .dot-making {
     animation: none;
   }
-}
 
-/* ---- pointer-specific hints ---- */
-
-.mouse-only {
-  display: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .mouse-only {
-    display: inline;
-  }
-
-  .touch-only {
-    display: none;
-  }
-
-  .thumb:hover,
-  .tile:hover,
-  .roomchip:hover,
-  .chip:hover,
-  .ghost:hover,
-  .next:hover,
-  .addzone:hover,
-  .addtile:hover {
-    border-color: var(--muted);
-  }
-
-  .primary:hover,
-  .next.main:hover {
-    filter: brightness(1.08);
-    border-color: var(--accent);
+  .side-view {
+    transition: none;
   }
 }
 
-.dropping {
-  border-color: var(--accent) !important;
-  background: color-mix(in srgb, var(--accent) 8%, var(--card));
-}
-
-/* ---- wide screens: the picture on the left, the library on the right ---- */
-
+/* On a wide screen a picture keeps its true shape and shrinks to fit the window. */
 @media (min-width: 900px) {
-  .app {
-    position: relative;
-    max-width: 1240px;
-    padding: 0 32px 48px;
-  }
-
-  .top {
-    padding-top: 22px;
-  }
-
-  .tabs {
-    position: absolute;
-    top: 14px;
-    right: 32px;
-    bottom: auto;
-    left: auto;
-    padding: 0;
-    border: 0;
-    background: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-
-  .tabs button {
-    flex: none;
-    padding: 0 18px;
-  }
-
-  .status {
-    margin-right: 190px;
-  }
-
-  .rooms,
-  .strip {
-    margin: 0;
-    padding: 2px 0;
-  }
-
-  .rooms {
-    flex-wrap: wrap;
-  }
-
-  .start {
-    max-width: 640px;
-    margin: 56px auto 0;
-  }
-
-  .room-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
-    gap: 40px;
-    align-items: start;
-    margin-top: 12px;
-  }
-
-  .room-side .step {
-    margin-top: 0;
-  }
-
-  .room-side .strip {
-    flex-wrap: wrap;
-  }
-
-  .room-side .thumb.pick,
-  .room-side .strip .addtile {
-    width: 96px;
-    height: 96px;
-  }
-
-  .grid {
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-    gap: 14px;
-  }
-
-  .things {
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  }
-
-  .toast {
-    left: auto;
-    right: 32px;
-    bottom: 32px;
-    margin: 0;
-  }
-
-  .tools {
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    min-height: 0;
-    margin: 0 0 12px;
-  }
-
-  .tools .ghost {
-    flex: 1 1 40%;
-    max-width: none;
-  }
-
-  /* looking at one picture: the picture on the left, what to do with it on the right */
-  .viewer {
-    display: grid;
-    grid-template: 'bar bar' auto 'stage panel' minmax(0, 1fr) / minmax(0, 1fr) 380px;
-  }
-
-  .viewer-bar {
-    grid-area: bar;
-    padding: 8px 16px;
-  }
-
-  .viewer .stage {
-    grid-area: stage;
-    padding: 0 24px 24px;
-  }
-
-  .panel {
-    grid-area: panel;
-    max-width: none;
-    margin: 0;
-    padding: 24px;
-    overflow-y: auto;
-  }
-
-  .recipe {
-    flex-wrap: wrap;
-  }
-}
-
-/* ---- the loom: a thread of pictures, each one a live canvas with its options beneath ---- */
-
-.node {
-  margin-top: 14px;
-  scroll-margin-top: 12px;
-}
-
-.node-pic {
-  position: relative;
-  border-radius: 12px;
-  background: var(--soft);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-}
-
-/* Drawn inside the picture's edge, so a carousel's clipping cannot cut it off. */
-.node.focused .node-pic {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-/* A finger on the picture scrolls the page; a finger on a thing moves it. While a thing is held the picture
-   takes every touch, so a second finger anywhere can pinch and twist. */
-.canvas {
-  position: relative;
-  touch-action: pan-x pan-y;
-}
-
-.canvas.holding {
-  touch-action: none;
-}
-
-.canvas .stage-photo {
-  pointer-events: none;
-}
-
-.canvas .sticker {
-  cursor: grab;
-}
-
-/* On a finished design the things are still there to grab, just not drawn. */
-.sticker.ghost img {
-  opacity: 0;
-}
-
-/* A tap on a finished design lifts its things into view over the picture. */
-.sticker.peek {
-  outline: 1.5px dashed rgb(255 255 255 / 0.9);
-  outline-offset: 2px;
-}
-
-.sticker.peek img {
-  opacity: 0.8;
-}
-
-.open {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 40px;
-  height: 40px;
-  border: 0;
-  border-radius: 50%;
-  background: rgb(20 24 30 / 0.6);
-  color: #fff;
-  font-size: 18px;
-  line-height: 1;
-}
-
-.node .tools {
-  margin: 10px 0 0;
-}
-
-.composer .step {
-  margin-top: 20px;
-}
-
-@media (min-width: 900px) {
-  .thread {
-    min-width: 0;
-  }
-
-  /* Each picture keeps its true shape so things stay where they were put; it shrinks to fit the window. */
   .node-pic {
     width: fit-content;
     max-width: 100%;
+    margin: 0 auto;
   }
 
-  .canvas .stage-photo {
+  .stage-photo {
     width: auto;
     max-width: 100%;
-    max-height: 74vh;
+    max-height: 70vh;
   }
 
-  .room-side {
-    position: sticky;
-    top: 16px;
-  }
-
-  .room-side .composer .step {
-    margin-top: 14px;
-  }
-
-  .room-side .tray {
-    flex-wrap: wrap;
-  }
-
-  .room-side .tray .thumb {
-    width: 96px;
-    height: 96px;
-  }
-
-  .node .tools .ghost {
-    flex: 0 1 auto;
-  }
-}
-
-/* ---- options under a picture: swipe sideways between them ---- */
-
-.level + .level {
-  margin-top: 22px;
-}
-
-.pager {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.pager .fine {
-  margin: 0;
-}
-
-.pager .ghost {
-  min-width: 44px;
-  min-height: 44px;
-  font-size: 20px;
-}
-
-.pager [aria-disabled='true'] {
-  opacity: 0.3;
-}
-
-.options-view {
-  scrollbar-width: none;
-  border-radius: 12px;
-}
-
-.options-view::-webkit-scrollbar {
-  display: none;
-}
-
-/* Slides keep their own height, so a short picture is not stretched to match a tall neighbour. */
-.options-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.option {
-  flex: 0 0 100%;
-  min-width: 0;
-}
-
-.option .node {
-  margin-top: 0;
-}
-
-.making {
-  min-height: 180px;
-  margin-top: 22px;
-  box-shadow: none;
-}
-
-.making .kao {
-  margin-bottom: 6px;
-}
-
-@media (min-width: 900px) {
-  .option .node-pic {
-    margin: 0 auto;
+  .side-view {
+    box-shadow: none;
   }
 }

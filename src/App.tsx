@@ -1,20 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
-  api,
-  fileUrl,
-  isCutting,
-  stickerThumbUrl,
-  stickerUrl,
-  thumbUrl,
-  toDataUrl,
-  type Idea,
-  type Img,
-  type Placement,
-  type Quality,
-  type Room,
-  type State,
-} from './api'
-import {
   Carousel,
   CarouselContent,
   CarouselItem,
@@ -23,35 +8,46 @@ import {
   CarouselViewport,
   createCarouselController,
 } from '@ui-sdk/react/carousel'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@ui-sdk/react/menu'
+import {
+  api,
+  fileUrl,
+  isCutting,
+  stickerThumbUrl,
+  stickerUrl,
+  thumbUrl,
+  toDataUrl,
+  type Img,
+  type Placement,
+  type Room,
+  type State,
+} from './api'
 import { Canvas } from './Canvas'
 import { composeGuide, cutOut, shrink } from './cutout'
 
-/** What is typed for a room, and which of its photos the thread starts from. */
-type Draft = { rootId?: string; prompt: string; quality: Quality; ideas: Idea[] }
-type Pending = { key: number; roomId: string; parentId: string }
+type Pending = { key: number; parentId: string }
 
-const blankDraft: Draft = { prompt: '', quality: 'fast', ideas: [] }
-const ROOM_NAMES = ['Living room', 'Bedroom', 'Kitchen', 'Dining room', 'Office', 'Hallway', 'Bathroom']
-
-const roomPhotos = (room: Room, images: Img[]) =>
-  images.filter((i) => i.roomId === room.id && i.kind === 'room').sort((a, b) => a.createdAt - b.createdAt)
-
-// A room is a loom. Each photo of it is the top of a thread; every design hangs under the picture it was made
-// from, and any picture in the thread can be branched again.
+// A room is a loom. Its photo is the top of a thread; every design hangs under the picture it was made from,
+// and any picture in the thread can be branched again.
 const parentOf = (design: Img) => design.parentId ?? design.baseId
-const optionsUnder = (node: Img, images: Img[]) =>
+const designsUnder = (node: Img, images: Img[]) =>
   images.filter((i) => i.kind === 'render' && parentOf(i) === node.id).sort((a, b) => a.createdAt - b.createdAt)
+
+/** The photo a room's thread starts from. */
+const topOf = (room: Room, images: Img[]) =>
+  images.filter((i) => i.roomId === room.id && i.kind === 'room').sort((a, b) => a.createdAt - b.createdAt)[0] as
+    Img | undefined
 
 /** The picture a node's things are placed on: the untouched photo for a design made from stickers. */
 const cleanOf = (node: Img, images: Img[]) =>
   (node.kind === 'render' && node.layout?.length ? images.find((i) => i.id === node.baseId) : undefined) ?? node
 
-/** The thread from a room photo down through the chosen option at each level. */
-function threadFrom(root: Img, images: Img[], chosen: Record<string, string>) {
-  const thread = [root]
-  for (let node = root; thread.length < 60;) {
-    const options = optionsUnder(node, images)
-    const next = options.find((o) => o.id === chosen[node.id]) ?? options[options.length - 1]
+/** The thread from a room photo down through the followed design at each level. */
+function threadFrom(top: Img, images: Img[], chosen: Record<string, string>) {
+  const thread = [top]
+  for (let node = top; thread.length < 60;) {
+    const designs = designsUnder(node, images)
+    const next = designs.find((d) => d.id === chosen[node.id]) ?? designs[designs.length - 1]
     if (!next) break
     thread.push(next)
     node = next
@@ -59,38 +55,23 @@ function threadFrom(root: Img, images: Img[], chosen: Record<string, string>) {
   return thread
 }
 
-function useWide() {
-  const query = '(min-width: 900px)'
-  const [wide, setWide] = useState(() => matchMedia(query).matches)
-  useEffect(() => {
-    const media = matchMedia(query)
-    const onChange = () => setWide(media.matches)
-    media.addEventListener('change', onChange)
-    return () => media.removeEventListener('change', onChange)
-  }, [])
-  return wide
-}
-
 export default function App() {
   const [state, setState] = useState<State | null>(null)
-  const [tab, setTab] = useState<'rooms' | 'things'>('rooms')
   const [roomId, setRoomId] = useState<string | null>(null)
-  const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   /** Arrangements in progress, by the picture they are on. A picture not listed here shows its own. */
   const [work, setWork] = useState<Record<string, Placement[]>>({})
-  /** The option followed under each picture. */
+  /** The design followed under each picture. */
   const [chosen, setChosen] = useState<Record<string, string>>({})
-  /** The picture the tray and "Make it real" act on, per room. */
-  const [focus, setFocus] = useState<Record<string, string>>({})
+  /** The picture last arranged, which "Make it real" acts on. */
+  const [touched, setTouched] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending[]>([])
-  const [naming, setNaming] = useState<string[]>([])
-  const [thinking, setThinking] = useState<string | null>(null)
   const [uploading, setUploading] = useState(0)
+  const [renaming, setRenaming] = useState(false)
+  const [shelf, setShelf] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [viewingId, setViewingId] = useState<string | null>(null)
-  const wide = useWide()
+  const addRoom = useRef<HTMLInputElement>(null)
   const nextKey = useRef(0)
-  // Pictures with options in the making. A ref, so a second tap is refused before React has re-rendered.
+  // Pictures with a design in the making. A ref, so a second tap is refused before React has re-rendered.
   const rendering = useRef(new Set<string>())
 
   async function attempt<T>(fn: () => Promise<T>): Promise<T | undefined> {
@@ -180,16 +161,23 @@ export default function App() {
   const images = state.images
   const room = state.rooms.find((r) => r.id === roomId) ?? state.rooms[0]
   const items = images.filter((i) => i.kind === 'item').sort((a, b) => b.createdAt - a.createdAt)
-  const viewing = images.find((i) => i.id === viewingId)
-
-  const patchDraft = (id: string, patch: Partial<Draft>) =>
-    setDrafts((d) => ({ ...d, [id]: { ...blankDraft, ...d[id], ...patch } }))
+  /** Rooms that have a photo, each shown by it. */
+  const tops = state.rooms.flatMap((r) => {
+    const top = topOf(r, images)
+    return top ? [{ room: r, top }] : []
+  })
+  const top = room && topOf(room, images)
+  const thread = top ? threadFrom(top, images, chosen) : []
 
   /** The things on a picture right now: the arrangement in progress, else the one it was made with. */
   const layoutOf = (node: Img) =>
     (work[node.id] ?? (node.kind === 'render' ? (node.layout ?? []) : [])).filter((p) =>
       items.some((i) => i.id === p.itemId),
     )
+  /** A picture with something to make: a photo with things on it, or a design whose things have moved. */
+  const makeable = (node: Img) => layoutOf(node).length > 0 && (node.kind === 'room' || node.id in work)
+  const target = thread.find((n) => n.id === touched && makeable(n)) ?? [...thread].reverse().find(makeable)
+  const making = target ? pending.some((p) => p.parentId === target.id) : false
 
   const mutate = <T extends { state: State }>(fn: () => Promise<T>) =>
     attempt(async () => {
@@ -198,17 +186,39 @@ export default function App() {
       return res
     })
 
-  /** Naming happens behind the scenes and never interrupts: if it fails, the app asks, or leaves the name blank. */
-  async function guessName(kind: 'room' | 'item', id: string) {
-    if (kind === 'room') setNaming((n) => [...n, id])
-    try {
-      const res = await (kind === 'room' ? api.guessRoomName(id) : api.guessItemName(id))
-      setState(res.state)
-    } catch {
-      // Asking the person is the fallback.
-    }
-    if (kind === 'room') setNaming((n) => n.filter((x) => x !== id))
+  function arrange(node: Img, layout: Placement[] | null) {
+    setWork((w) => {
+      // An arrangement identical to the one a design was made with is not "in progress".
+      const same = node.kind === 'render' && JSON.stringify(layout) === JSON.stringify(node.layout ?? [])
+      if (layout && !same) return { ...w, [node.id]: layout }
+      const { [node.id]: _, ...rest } = w
+      return rest
+    })
+    if (layout) setTouched(node.id)
   }
+
+  /** Puts a thing on the picture in the thread that is nearest the middle of the screen. */
+  function drop(item: Img) {
+    const middle = innerHeight / 2
+    const distance = (node: Img) => {
+      const box = document.getElementById(`node-${node.id}`)?.getBoundingClientRect()
+      return box ? Math.abs((box.top + box.bottom) / 2 - middle) : Infinity
+    }
+    const node = [...thread].sort((a, b) => distance(a) - distance(b))[0]
+    if (!node) return
+    const layout = layoutOf(node)
+    const nudge = (layout.length % 5) * 0.03
+    const key = `${item.id}-${Date.now().toString(36)}`
+    arrange(node, [...layout, { key, itemId: item.id, x: 0.5 + nudge, y: 0.56 + nudge, w: 0.3, rot: 0, flip: false }])
+    setShelf(false)
+  }
+
+  /** Names come from the photo, behind the scenes. A failure just leaves the name blank. */
+  const guessName = (kind: 'room' | 'item', id: string) =>
+    (kind === 'room' ? api.guessRoomName(id) : api.guessItemName(id)).then(
+      (res) => setState(res.state),
+      () => {},
+    )
 
   async function upload(kind: 'room' | 'item', files: File[], forRoom?: string) {
     setUploading((n) => n + 1)
@@ -216,7 +226,7 @@ export default function App() {
       for (const file of files) {
         const dataUrl = await toDataUrl(file)
         const cutoutDataUrl = kind === 'item' ? ((await cutOut(dataUrl)) ?? undefined) : undefined
-        const res = await api.addImage({ kind, roomId: kind === 'room' ? forRoom : undefined, dataUrl, cutoutDataUrl })
+        const res = await api.addImage({ kind, roomId: forRoom, dataUrl, cutoutDataUrl })
         setState(res.state)
         if (kind === 'item') guessName('item', res.id)
       }
@@ -224,42 +234,40 @@ export default function App() {
     setUploading((n) => n - 1)
   }
 
-  /** A room begins as a photo. Its name comes from the photo when that is obvious. */
-  async function startRoom(files: File[]) {
-    const res = await attempt(() => api.addRoom())
-    if (!res) return
-    setState(res.state)
-    setRoomId(res.id)
-    setTab('rooms')
-    window.scrollTo({ top: 0 })
-    await upload('room', files, res.id)
-    guessName('room', res.id)
+  /** Every photo starts a room of its own. */
+  async function startRooms(files: File[]) {
+    for (const file of files) {
+      const res = await attempt(() => api.addRoom())
+      if (!res) return
+      setState(res.state)
+      setRoomId(res.id)
+      window.scrollTo({ top: 0 })
+      await upload('room', [file], res.id)
+      guessName('room', res.id)
+    }
   }
 
-  /** Makes one design under a picture and follows it. Pressing again hangs another option beside it. */
-  async function generate(target: Room, node: Img) {
-    const draft = drafts[target.id] ?? blankDraft
+  /** Makes one design under a picture and follows it. Pressing again hangs another beside it. */
+  async function generate(node: Img) {
     const layout = layoutOf(node)
     const clean = cleanOf(node, images)
-    if ((!layout.length && !draft.prompt.trim()) || rendering.current.has(node.id)) return
+    if (!room || !layout.length || rendering.current.has(node.id)) return
     rendering.current.add(node.id)
 
     const key = nextKey.current++
-    setPending((p) => [...p, { key, roomId: target.id, parentId: node.id }])
+    setPending((p) => [...p, { key, parentId: node.id }])
     const res = await mutate(async () => {
       const sticker = (id: string) => {
         const item = items.find((i) => i.id === id)
         return item && stickerUrl(item)
       }
       return api.render({
-        roomId: target.id,
+        roomId: room.id,
         baseId: clean.id,
         parentId: node.id,
         itemIds: [...new Set(layout.map((p) => p.itemId))],
-        prompt: draft.prompt,
-        quality: draft.quality,
-        layout: layout.length ? layout : undefined,
-        guideDataUrl: layout.length ? await composeGuide(fileUrl(clean), layout, sticker) : undefined,
+        layout,
+        guideDataUrl: await composeGuide(fileUrl(clean), layout, sticker),
       })
     })
     if (res) setChosen((c) => ({ ...c, [node.id]: res.id }))
@@ -267,47 +275,71 @@ export default function App() {
     rendering.current.delete(node.id)
   }
 
-  async function suggest(target: Room, node: Img) {
-    setThinking(target.id)
-    const itemIds = [...new Set(layoutOf(node).map((p) => p.itemId))]
-    const res = await attempt(() => api.ideas({ baseId: cleanOf(node, images).id, itemIds }))
-    if (res) patchDraft(target.id, { ideas: res.ideas })
-    setThinking(null)
-  }
-
-  /** Brings a picture into view as the place to keep working: follows the thread down to it. */
-  function continueFrom(img: Img) {
-    if (!img.roomId) return
-    const follow: Record<string, string> = {}
-    let top = img
-    while (top.kind === 'render') {
-      const parent = images.find((i) => i.id === parentOf(top))
-      if (!parent) break
-      follow[parent.id] = top.id
-      top = parent
+  /** Hands the picture to the phone's share sheet, where "Save Image" lives, or downloads it. */
+  async function save(img: Img) {
+    const name = `designer-chan-${img.file}`
+    try {
+      const blob = await (await fetch(fileUrl(img))).blob()
+      const file = new File([blob], name, { type: blob.type })
+      if (navigator.canShare?.({ files: [file] })) return await navigator.share({ files: [file] })
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return
     }
-    setChosen((c) => ({ ...c, ...follow }))
-    if (top.kind === 'room') patchDraft(img.roomId, { rootId: top.id })
-    setFocus((f) => ({ ...f, [img.roomId!]: img.id }))
-    setRoomId(img.roomId)
-    setTab('rooms')
-    setViewingId(null)
-    requestAnimationFrame(() =>
-      document.getElementById(`node-${img.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-    )
+    const link = document.createElement('a')
+    link.href = fileUrl(img)
+    link.download = name
+    link.click()
   }
 
   async function deleteRoom(target: Room) {
-    if (!confirm(`Delete ${target.name ? `"${target.name}"` : 'this room'} with all its photos and designs?`)) return
+    if (!confirm(`Delete ${target.name ? `"${target.name}"` : 'this room'} with all its designs?`)) return
     await mutate(() => api.deleteRoom(target.id))
     setRoomId(null)
   }
 
   async function deleteImage(img: Img) {
-    const what = img.kind === 'render' ? 'design' : img.kind === 'item' ? 'thing' : 'photo'
-    if (!confirm(`Delete this ${what}?`)) return
-    setViewingId(null)
+    if (!confirm(`Delete this ${img.kind === 'item' ? 'thing' : 'design'}?`)) return
     await mutate(() => api.deleteImage(img.id))
+  }
+
+  const picture = (node: Img) => {
+    const changed = node.id in work
+    const clean = cleanOf(node, images)
+    const finished = node.kind === 'render' && !!node.layout?.length && !changed && clean !== node
+    return (
+      <div id={`node-${node.id}`} className="node">
+        <Canvas
+          clean={clean}
+          result={finished ? node : undefined}
+          layout={layoutOf(node)}
+          items={items}
+          onChange={(layout) => arrange(node, layout)}
+        >
+          {node.kind === 'render' && node.favorite && <span className="heart">♥</span>}
+          {node.kind === 'render' && (
+            <Menu>
+              <MenuTrigger className="more" aria-label="More for this design" data-carousel-no-drag="">
+                …
+              </MenuTrigger>
+              <MenuContent className="menu" align="end">
+                <MenuItem onSelect={() => save(node)}>Save picture</MenuItem>
+                <MenuItem onSelect={() => mutate(() => api.updateImage(node.id, { favorite: !node.favorite }))}>
+                  {node.favorite ? 'Remove from favourites' : 'Favourite'}
+                </MenuItem>
+                <MenuItem destructive onSelect={() => deleteImage(node)}>
+                  Delete
+                </MenuItem>
+              </MenuContent>
+            </Menu>
+          )}
+          {node.kind === 'render' && changed && (
+            <button className="pill" onClick={() => arrange(node, null)}>
+              Back to the result
+            </button>
+          )}
+        </Canvas>
+      </div>
+    )
   }
 
   return (
@@ -316,117 +348,211 @@ export default function App() {
         <h1>
           Designer<span lang="ja">ちゃん</span>
         </h1>
-        {uploading > 0 && <span className="status">Adding photos…</span>}
+        {uploading > 0 && <span className="status">Adding…</span>}
       </header>
 
+      <FileInput ref={addRoom} onFiles={startRooms} />
+
       <main>
-        {tab === 'rooms' && !room && (
+        {!room && (
           <section className="start">
             <span className="kao">(・ω・)ノ</span>
             <h2>Start with a room</h2>
             <p>Add a photo of a room you want to furnish. A listing photo is perfect.</p>
-            <AddZone big title="Add a photo of a room" hint="More than one angle is welcome" onFiles={startRoom} />
+            <AddZone title="Add a photo of a room" hint="Each photo becomes a room" onFiles={startRooms} />
           </section>
         )}
 
-        {tab === 'rooms' && room && (
+        {room && (
           <>
-            <nav className="rooms">
-              {state.rooms.map((r) => {
-                const cover = roomPhotos(r, images)[0]
-                return (
-                  <button
-                    key={r.id}
-                    className="roomchip"
-                    aria-pressed={r.id === room.id}
-                    onClick={() => setRoomId(r.id)}
-                  >
-                    {cover ? <img src={thumbUrl(cover)} alt="" /> : <span className="blank" />}
-                    {r.name || 'New room'}
-                  </button>
-                )
-              })}
-              <FileLabel className="roomchip add" onFiles={startRoom}>
-                + Room
-              </FileLabel>
-            </nav>
+            <div className="roomhead">
+              {renaming ? (
+                <Field
+                  className="title"
+                  value={room.name}
+                  placeholder="Name this room"
+                  label="Room name"
+                  autoFocus
+                  onSave={(name) => mutate(() => api.renameRoom(room.id, name))}
+                  onDone={() => setRenaming(false)}
+                />
+              ) : (
+                <Menu>
+                  <MenuTrigger className="title roomname">
+                    {room.name || 'New room'}
+                    <span aria-hidden> ▾</span>
+                  </MenuTrigger>
+                  <MenuContent className="menu" align="start">
+                    {state.rooms.map((r) => {
+                      const cover = topOf(r, images)
+                      return (
+                        <MenuItem key={r.id} className="menu-room" onSelect={() => setRoomId(r.id)}>
+                          {cover ? <img src={thumbUrl(cover)} alt="" /> : <span className="blank" />}
+                          {r.name || 'New room'}
+                          {r.id === room.id && <span className="tick">✓</span>}
+                        </MenuItem>
+                      )
+                    })}
+                    <MenuSeparator className="menu-rule" />
+                    <MenuItem onSelect={() => addRoom.current?.click()}>Add a room</MenuItem>
+                    <MenuItem onSelect={() => setRenaming(true)}>Rename</MenuItem>
+                    <MenuItem destructive onSelect={() => deleteRoom(room)}>
+                      Delete this room
+                    </MenuItem>
+                  </MenuContent>
+                </Menu>
+              )}
+            </div>
 
-            <RoomView
-              rooms={state.rooms}
-              rootOf={(r) => {
-                const photos = roomPhotos(r, images)
-                return photos.find((photo) => photo.id === drafts[r.id]?.rootId) ?? photos[0]
-              }}
-              onRoom={(r) => setRoomId(r.id)}
-              room={room}
-              images={images}
-              items={items}
-              draft={drafts[room.id] ?? blankDraft}
-              chosen={chosen}
-              focusId={focus[room.id]}
-              layoutOf={layoutOf}
-              isChanged={(node) => node.id in work}
-              pending={pending.filter((p) => p.roomId === room.id)}
-              naming={naming.includes(room.id)}
-              takenNames={state.rooms.map((r) => r.name)}
-              thinking={thinking === room.id}
-              busy={uploading > 0}
-              wide={wide}
-              onPatch={(patch) => patchDraft(room.id, patch)}
-              onArrange={(node, layout) =>
-                setWork((w) => {
-                  // An arrangement identical to the one a design was made with is not "in progress".
-                  const same = node.kind === 'render' && JSON.stringify(layout) === JSON.stringify(node.layout ?? [])
-                  if (!same && layout) return { ...w, [node.id]: layout }
-                  const { [node.id]: _, ...rest } = w
-                  return rest
-                })
-              }
-              onChoose={(parent, option) => {
-                setChosen((c) => ({ ...c, [parent.id]: option.id }))
-                setFocus((f) => ({ ...f, [room.id]: option.id }))
-              }}
-              onFocus={(node) => setFocus((f) => ({ ...f, [room.id]: node.id }))}
-              onRename={(name) => mutate(() => api.renameRoom(room.id, name))}
-              onDelete={() => deleteRoom(room)}
-              onAddPhotos={(files) => upload('room', files, room.id)}
-              onAddItems={(files) => upload('item', files)}
-              onGenerate={(node) => generate(room, node)}
-              onSuggest={(node) => suggest(room, node)}
-              onView={setViewingId}
-            />
+            {!top ? (
+              uploading === 0 && (
+                <AddZone
+                  title="Add a photo of this room"
+                  hint="As it is now"
+                  onFiles={(f) => upload('room', f, room.id)}
+                />
+              )
+            ) : (
+              <div className="thread">
+                {thread.map((node, depth) => {
+                  const parent: Img | undefined = thread[depth - 1]
+                  const designs = parent ? designsUnder(parent, images) : []
+                  return (
+                    <section key={parent ? `under-${parent.id}` : 'rooms'} className="level">
+                      {parent ? (
+                        <Side
+                          label="Designs"
+                          index={designs.indexOf(node)}
+                          count={designs.length}
+                          making={pending.some((p) => p.parentId === parent.id)}
+                          onIndex={(i) => designs[i] && setChosen((c) => ({ ...c, [parent.id]: designs[i].id }))}
+                        >
+                          {designs.map((d) => (
+                            <CarouselItem key={d.id} className="slide">
+                              {picture(d)}
+                            </CarouselItem>
+                          ))}
+                        </Side>
+                      ) : (
+                        <Side
+                          label="Rooms"
+                          index={tops.findIndex((t) => t.room.id === room.id)}
+                          count={tops.length}
+                          onIndex={(i) => tops[i] && setRoomId(tops[i].room.id)}
+                        >
+                          {tops.map((t) => (
+                            <CarouselItem key={t.room.id} className="slide">
+                              {picture(t.top)}
+                            </CarouselItem>
+                          ))}
+                        </Side>
+                      )}
+
+                      {depth === thread.length - 1 && pending.some((p) => p.parentId === node.id) && (
+                        <div className="node-pic pending making">
+                          <span>
+                            <span className="kao">(๑•̀ㅂ•́)و</span>
+                            Making it real…
+                          </span>
+                        </div>
+                      )}
+                    </section>
+                  )
+                })}
+              </div>
+            )}
           </>
-        )}
-
-        {tab === 'things' && (
-          <ThingsView
-            items={items}
-            onAdd={(files) => upload('item', files)}
-            onView={setViewingId}
-            onRename={(id, name) => mutate(() => api.updateImage(id, { name }))}
-          />
         )}
       </main>
 
-      <nav className="tabs">
-        <button aria-pressed={tab === 'rooms'} onClick={() => setTab('rooms')}>
-          Rooms
-        </button>
-        <button aria-pressed={tab === 'things'} onClick={() => setTab('things')}>
-          Things{items.length > 0 && <small>{items.length}</small>}
-        </button>
-      </nav>
+      {shelf && (
+        <section className="shelf" aria-label="All your things">
+          <div className="shelf-head">
+            <h2>Things</h2>
+            <button className="ghost small" onClick={() => setShelf(false)}>
+              Close
+            </button>
+          </div>
+          <div className="shelf-grid">
+            {items.map((item) => (
+              <div key={item.id} className="thing">
+                <button
+                  className={'tile cut' + (isCutting(item) ? ' cutting' : '')}
+                  disabled={isCutting(item) || !top}
+                  aria-label={`Put ${item.name || 'this thing'} in the picture`}
+                  onClick={() => drop(item)}
+                >
+                  <img src={stickerThumbUrl(item)} alt="" />
+                </button>
+                <div className="thing-row">
+                  <Field
+                    value={item.name}
+                    placeholder="Name it"
+                    label="Name"
+                    allowEmpty
+                    onSave={(name) => mutate(() => api.updateImage(item.id, { name }))}
+                  />
+                  <Menu>
+                    <MenuTrigger className="ghost small" aria-label={`More for ${item.name || 'this thing'}`}>
+                      …
+                    </MenuTrigger>
+                    <MenuContent className="menu" align="end">
+                      <MenuItem
+                        disabled={isCutting(item)}
+                        onSelect={() =>
+                          mutate(() => (item.cutout ? api.setCutout(item.id, null) : api.retryCutout(item.id)))
+                        }
+                      >
+                        {item.cutout ? 'Use the whole photo' : 'Cut it out again'}
+                      </MenuItem>
+                      <MenuItem destructive onSelect={() => deleteImage(item)}>
+                        Delete
+                      </MenuItem>
+                    </MenuContent>
+                  </Menu>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
-      {viewing && (
-        <Viewer
-          img={viewing}
-          images={images}
-          onClose={() => setViewingId(null)}
-          onUpdate={(patch) => mutate(() => api.updateImage(viewing.id, patch))}
-          onDelete={() => deleteImage(viewing)}
-          onCutout={(on) => mutate(() => (on ? api.retryCutout(viewing.id) : api.setCutout(viewing.id, null)))}
-          onContinue={() => continueFrom(viewing)}
-        />
+      {room && (
+        <footer className="dock">
+          {items.length > 0 && (
+            <button
+              className="ghost shelf-toggle"
+              aria-expanded={shelf}
+              aria-label="All your things"
+              onClick={() => setShelf((on) => !on)}
+            >
+              {shelf ? '▾' : '▴'}
+            </button>
+          )}
+          <div className="strip dock-things">
+            {items.map((item) => (
+              <button
+                key={item.id}
+                className={'thumb cut' + (isCutting(item) ? ' cutting' : '')}
+                disabled={isCutting(item) || !top}
+                aria-label={`Put ${item.name || 'this thing'} in the picture`}
+                title={item.name}
+                onClick={() => drop(item)}
+              >
+                <img src={stickerThumbUrl(item)} alt="" />
+              </button>
+            ))}
+            <FileLabel className="thumb addtile" onFiles={(f) => upload('item', f)}>
+              <span className="plus">+</span>
+              <span>{items.length ? 'Add' : 'Add things'}</span>
+            </FileLabel>
+          </div>
+          {target && (
+            <button className="primary make" disabled={making} onClick={() => generate(target)}>
+              {making ? 'Making…' : 'Make it real'}
+            </button>
+          )}
+        </footer>
       )}
 
       {error && (
@@ -441,283 +567,13 @@ export default function App() {
   )
 }
 
-function RoomView(props: {
-  room: Room
-  images: Img[]
-  items: Img[]
-  draft: Draft
-  chosen: Record<string, string>
-  focusId?: string
-  layoutOf: (node: Img) => Placement[]
-  isChanged: (node: Img) => boolean
-  pending: Pending[]
-  naming: boolean
-  takenNames: string[]
-  thinking: boolean
-  busy: boolean
-  wide: boolean
-  rooms: Room[]
-  rootOf: (room: Room) => Img | undefined
-  onRoom: (room: Room) => void
-  onPatch: (patch: Partial<Draft>) => void
-  onArrange: (node: Img, layout: Placement[] | null) => void
-  onChoose: (parent: Img, option: Img) => void
-  onFocus: (node: Img) => void
-  onRename: (name: string) => void
-  onDelete: () => void
-  onAddPhotos: (files: File[]) => void
-  onAddItems: (files: File[]) => void
-  onGenerate: (node: Img) => void
-  onSuggest: (node: Img) => void
-  onView: (id: string) => void
-}) {
-  const { room, draft, items, images } = props
-  const photos = roomPhotos(room, images)
-  const root = props.rootOf(room)
-  /** Rooms that have a photo, each shown by the photo its thread starts from. */
-  const tops = props.rooms.flatMap((r) => {
-    const top = props.rootOf(r)
-    return top ? [{ room: r, top }] : []
-  })
-  const thread = root ? threadFrom(root, images, props.chosen) : []
-  const focused = thread.find((n) => n.id === props.focusId) ?? thread[thread.length - 1]
-  const hasWords = Boolean(draft.prompt.trim())
-
-  function drop(item: Img) {
-    const layout = props.layoutOf(focused)
-    const nudge = (layout.length % 5) * 0.03
-    const key = `${item.id}-${Date.now().toString(36)}`
-    props.onArrange(focused, [
-      ...layout,
-      { key, itemId: item.id, x: 0.5 + nudge, y: 0.56 + nudge, w: 0.3, rot: 0, flip: false },
-    ])
-  }
-
-  const making = focused ? props.pending.some((p) => p.parentId === focused.id) : false
-  const canMake = focused ? props.layoutOf(focused).length > 0 || hasWords : false
-
-  const picture = (node: Img) => {
-    const changed = props.isChanged(node)
-    const finished = node.kind === 'render' && !!node.layout?.length && !changed
-    const clean = cleanOf(node, images)
-    return (
-      <div id={`node-${node.id}`} className={'node' + (node.id === focused.id && thread.length > 1 ? ' focused' : '')}>
-        <Canvas
-          clean={clean}
-          result={finished && clean !== node ? node : undefined}
-          layout={props.layoutOf(node)}
-          items={items}
-          onChange={(layout) => props.onArrange(node, layout)}
-          onFocus={() => props.onFocus(node)}
-        >
-          {node.kind === 'render' && (
-            <button className="open" aria-label="Open this design" onClick={() => props.onView(node.id)}>
-              ⤢
-            </button>
-          )}
-          {node.kind === 'render' && changed && (
-            <button className="pill" onClick={() => props.onArrange(node, null)}>
-              Back to the result
-            </button>
-          )}
-        </Canvas>
-      </div>
-    )
-  }
-
-  const composer = focused && (
-    <div className="composer">
-      <h3 className="step">What do you want to put in here?</h3>
-      {items.length === 0 ? (
-        <AddZone
-          title="Add photos of the things"
-          hint="A rug, a poster, a table. Product photos and screenshots both work."
-          onFiles={props.onAddItems}
-        />
-      ) : (
-        <div className="strip tray">
-          {items.map((item) => (
-            <button
-              key={item.id}
-              className={'thumb cut' + (isCutting(item) ? ' cutting' : '')}
-              disabled={isCutting(item)}
-              aria-label={`Put ${item.name || 'this thing'} in the picture`}
-              title={item.name}
-              onClick={() => drop(item)}
-            >
-              <img src={stickerThumbUrl(item)} alt="" />
-            </button>
-          ))}
-          <AddTile label="Add" onFiles={props.onAddItems} />
-        </div>
-      )}
-
-      <div className="actions go">
-        <button className="primary grow" disabled={making || !canMake} onClick={() => props.onGenerate(focused)}>
-          {making ? 'Making it real…' : 'Make it real'}
-        </button>
-      </div>
-      {!canMake && items.length > 0 && (
-        <p className="fine">Tap a thing to drop it into the picture, then drag it where you want it.</p>
-      )}
-
-      <details className="words" open={hasWords || draft.ideas.length > 0 || undefined}>
-        <summary>Say something about the look</summary>
-        <textarea
-          rows={3}
-          value={draft.prompt}
-          onChange={(e) => props.onPatch({ prompt: e.target.value })}
-          placeholder="Optional. e.g. warmer light, keep it minimal, add plants by the window"
-        />
-        {draft.ideas.length > 0 && (
-          <div className="ideas">
-            {draft.ideas.map((idea) => (
-              <button
-                key={idea.title + idea.prompt}
-                className="idea"
-                aria-pressed={draft.prompt === idea.prompt}
-                onClick={() => props.onPatch({ prompt: idea.prompt })}
-              >
-                <b>{idea.title}</b>
-                <span>{idea.prompt}</span>
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="actions">
-          <button className="ghost" disabled={props.thinking} onClick={() => props.onSuggest(focused)}>
-            {props.thinking ? 'Thinking…' : 'Suggest ideas'}
-          </button>
-          <div className="seg" role="group" aria-label="Quality">
-            <button aria-pressed={draft.quality === 'fast'} onClick={() => props.onPatch({ quality: 'fast' })}>
-              Quick
-            </button>
-            <button aria-pressed={draft.quality === 'best'} onClick={() => props.onPatch({ quality: 'best' })}>
-              Best
-            </button>
-          </div>
-        </div>
-      </details>
-    </div>
-  )
-
-  return (
-    <>
-      <div className="roomhead">
-        <Field
-          className="title"
-          value={room.name}
-          placeholder={props.naming ? 'Looking at your photo…' : 'New room'}
-          onSave={props.onRename}
-          label="Room name"
-        />
-        <button className="ghost small" onClick={props.onDelete}>
-          Delete room
-        </button>
-      </div>
-
-      {!root ? (
-        !props.busy && <AddZone big title="Add a photo of this room" hint="As it is now" onFiles={props.onAddPhotos} />
-      ) : (
-        <div className="room-grid">
-          <div className="thread">
-            {thread.map((node, depth) => {
-              const parent: Img | undefined = thread[depth - 1]
-              const options = parent ? optionsUnder(parent, images) : []
-              const last = depth === thread.length - 1
-              return (
-                <section key={parent ? `under-${parent.id}` : node.id} className="level">
-                  {parent ? (
-                    <Options
-                      label="Options"
-                      index={options.indexOf(node)}
-                      count={options.length}
-                      making={props.pending.some((x) => x.parentId === parent.id)}
-                      onIndex={(i) => options[i] && options[i] !== node && props.onChoose(parent, options[i])}
-                    >
-                      {options.map((o) => (
-                        <CarouselItem key={o.id} className="option">
-                          {picture(o)}
-                        </CarouselItem>
-                      ))}
-                    </Options>
-                  ) : (
-                    <Options
-                      label="Rooms"
-                      index={tops.findIndex((t) => t.room.id === room.id)}
-                      count={tops.length}
-                      onIndex={(i) => tops[i] && tops[i].room.id !== room.id && props.onRoom(tops[i].room)}
-                    >
-                      {tops.map((t) => (
-                        <CarouselItem key={t.room.id} className="option">
-                          {picture(t.top)}
-                        </CarouselItem>
-                      ))}
-                    </Options>
-                  )}
-
-                  {depth === 0 && (
-                    <div className="strip views">
-                      {photos.map((photo) => (
-                        <button
-                          key={photo.id}
-                          className="thumb"
-                          aria-pressed={photo.id === root.id}
-                          aria-label={photo.id === root.id ? 'Open this photo' : 'Use this view'}
-                          onClick={() =>
-                            photo.id === root.id ? props.onView(photo.id) : props.onPatch({ rootId: photo.id })
-                          }
-                        >
-                          <img src={thumbUrl(photo)} alt="" />
-                        </button>
-                      ))}
-                      <AddTile label="Another angle" onFiles={props.onAddPhotos} />
-                    </div>
-                  )}
-
-                  {depth === 0 && !room.name && !props.naming && (
-                    <section className="card question">
-                      <span className="kao">(・・?)</span>
-                      <h3>Which room is this?</h3>
-                      <div className="suggest">
-                        {ROOM_NAMES.filter((n) => !props.takenNames.includes(n)).map((n) => (
-                          <button key={n} className="chip" onClick={() => props.onRename(n)}>
-                            {n}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="fine">Or type a name above.</p>
-                    </section>
-                  )}
-
-                  {!props.wide && node.id === focused.id && composer}
-
-                  {last && props.pending.some((x) => x.parentId === node.id) && (
-                    <div className="node-pic pending making">
-                      <span>
-                        <span className="kao">(๑•̀ㅂ•́)و</span>
-                        Making it real…
-                      </span>
-                    </div>
-                  )}
-                </section>
-              )
-            })}
-          </div>
-          {props.wide && <div className="room-side">{composer}</div>}
-        </div>
-      )}
-    </>
-  )
-}
-
 /**
  * Pictures side by side: the designs made under one picture, or the rooms themselves. A sideways swipe, the
- * arrows or the arrow keys move between them, and the one in view is the one the page carries on from.
- * Designs get a counter with arrows; rooms are already named by the chips above.
+ * dots, a mouse drag or the arrow keys move between them, and the one in view is the one the page carries on
+ * from.
  */
-function Options(props: {
-  label: 'Options' | 'Rooms'
+function Side(props: {
+  label: 'Designs' | 'Rooms'
   index: number
   count: number
   making?: boolean
@@ -727,9 +583,8 @@ function Options(props: {
   const controller = useMemo(() => createCarouselController(), [])
   const page = props.index + 1
 
-  // Keep the carousel on the followed option: when it opens, when a new design arrives, and when "carry on
-  // from this" picks one in the viewer. It waits until the slides are measured, since a page set before that
-  // is dropped.
+  // Keep the carousel on the followed picture: when it opens, when a new design arrives, and when a dot or
+  // the room menu picks one. It waits until the slides are measured, since a page set before that is dropped.
   useEffect(() => {
     let frame = 0
     let tries = 0
@@ -741,214 +596,78 @@ function Options(props: {
     return () => cancelAnimationFrame(frame)
   }, [page, props.count])
 
-  return (
-    <div>
-      <Carousel
-        className="options"
-        aria-label={props.label}
-        controller={controller}
-        defaultPage={page}
-        onPageChange={(next) => props.onIndex(next - 1)}
-      >
-        {props.label === 'Options' && (props.count > 1 || props.making) && (
-          <div className="pager">
-            <CarouselPrevious className="ghost small" aria-label="Previous option">
-              ‹
-            </CarouselPrevious>
-            <span className="fine">
-              Option {page} of {props.count}
-              {props.making && ' · making another…'}
-            </span>
-            <CarouselNext className="ghost small" aria-label="Next option">
-              ›
-            </CarouselNext>
-          </div>
-        )}
-        <CarouselViewport className="options-view">
-          <CarouselContent className="options-row">{props.children}</CarouselContent>
-        </CarouselViewport>
-      </Carousel>
-    </div>
-  )
-}
+  // The carousel is as tall as the picture in view, not as tall as its tallest slide.
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const view = root.current?.querySelector<HTMLElement>('.side-view')
+    const slides = [...(root.current?.querySelectorAll<HTMLElement>('.slide') ?? [])]
+    if (!view || !slides[props.index]) return
+    const fit = () => (view.style.height = `${slides[props.index].offsetHeight}px`)
+    const observer = new ResizeObserver(fit)
+    slides.forEach((slide) => observer.observe(slide))
+    fit()
+    return () => observer.disconnect()
+  }, [props.index, props.count])
 
-function ThingsView(props: {
-  items: Img[]
-  onAdd: (files: File[]) => void
-  onView: (id: string) => void
-  onRename: (id: string, name: string) => void
-}) {
+  const several = props.count > 1
   return (
-    <>
-      <div className="roomhead">
-        <h2 className="title">Things</h2>
-      </div>
-      {props.items.length === 0 ? (
-        <AddZone
-          big
-          title="Add photos of things you like"
-          hint="Furniture, rugs, art, lamps. They can go in any room."
-          onFiles={props.onAdd}
-        />
-      ) : (
-        <div className="grid things">
-          {props.items.map((item) => (
-            <div key={item.id} className="thing">
-              <button
-                className={'tile cut' + (isCutting(item) ? ' cutting' : '')}
-                onClick={() => props.onView(item.id)}
-              >
-                <img src={stickerThumbUrl(item)} alt={item.name || 'Thing'} />
-              </button>
-              <Field
-                value={item.name}
-                placeholder="Name it"
-                label="Name"
-                onSave={(name) => props.onRename(item.id, name)}
-                allowEmpty
-              />
-            </div>
+    <Carousel
+      ref={root}
+      className="side"
+      aria-label={props.label}
+      controller={controller}
+      defaultPage={page}
+      onPageChange={(next) => next - 1 !== props.index && props.onIndex(next - 1)}
+    >
+      <CarouselViewport className="side-view">
+        <CarouselContent className="side-row">{props.children}</CarouselContent>
+      </CarouselViewport>
+      {several && (
+        <>
+          <CarouselPrevious className="arrow prev" aria-label="Previous">
+            ‹
+          </CarouselPrevious>
+          <CarouselNext className="arrow next" aria-label="Next">
+            ›
+          </CarouselNext>
+        </>
+      )}
+      {(several || props.making) && (
+        <div className="dots">
+          {Array.from({ length: props.count }, (_, i) => (
+            <button
+              key={i}
+              aria-label={`${props.label} ${i + 1} of ${props.count}`}
+              aria-current={i === props.index || undefined}
+              onClick={() => props.onIndex(i)}
+            />
           ))}
-          <AddTile className="tile" label="Add things" onFiles={props.onAdd} />
+          {props.making && <span className="dot-making" aria-label="Making another" />}
         </div>
       )}
-    </>
+    </Carousel>
   )
 }
 
-function Viewer(props: {
-  img: Img
-  images: Img[]
-  onClose: () => void
-  onUpdate: (patch: { name?: string; note?: string; favorite?: boolean }) => void
-  onDelete: () => void
-  onContinue: () => void
-  onCutout: (on: boolean) => void
-}) {
-  const { img } = props
-  const [before, setBefore] = useState(false)
-  const base = img.kind === 'render' ? props.images.find((i) => i.id === img.baseId) : undefined
-  const used = (img.itemIds ?? []).map((id) => props.images.find((i) => i.id === id)).filter((i) => !!i)
-  const shown = before && base ? base : img
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && props.onClose()
-    window.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
-    }
-  })
-
+/** A hidden photo picker that something else opens, such as a menu item. */
+function FileInput(props: { ref: React.Ref<HTMLInputElement>; onFiles: (files: File[]) => void }) {
   return (
-    <div className="viewer" role="dialog" aria-modal="true">
-      {/* Housekeeping stays small and out of the way, like a photo app's top bar. */}
-      <div className="viewer-bar">
-        <button className="bar-btn close" aria-label="Close" onClick={props.onClose}>
-          ✕
-        </button>
-        <span className="grow" />
-        {img.kind === 'render' && (
-          <button
-            className="bar-btn"
-            aria-pressed={!!img.favorite}
-            aria-label={img.favorite ? 'Remove from favourites' : 'Add to favourites'}
-            onClick={() => props.onUpdate({ favorite: !img.favorite })}
-          >
-            {img.favorite ? '♥' : '♡'}
-          </button>
-        )}
-        <a className="bar-btn" href={fileUrl(img)} download={`designer-chan-${img.file}`}>
-          Save
-        </a>
-        <button className="bar-btn" onClick={props.onDelete}>
-          Delete
-        </button>
-      </div>
-
-      <div className="stage" onClick={props.onClose}>
-        <img
-          className={img.kind === 'item' && img.cutout ? 'cutout' : isCutting(img) ? 'cutting' : undefined}
-          src={img.kind === 'item' ? stickerUrl(img) : fileUrl(shown)}
-          alt=""
-          onClick={(e) => e.stopPropagation()}
-        />
-        {base && (
-          <div className="seg compare" role="group" aria-label="Compare" onClick={(e) => e.stopPropagation()}>
-            <button aria-pressed={before} onClick={() => setBefore(true)}>
-              Before
-            </button>
-            <button aria-pressed={!before} onClick={() => setBefore(false)}>
-              After
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="panel">
-        {img.kind === 'render' && (
-          <>
-            {(img.prompt || used.length > 0) && (
-              <div className="recipe">
-                {used.map((u) => (
-                  <span key={u.id} className="thumb small cut" title={u.name}>
-                    <img src={stickerThumbUrl(u)} alt={u.name} />
-                  </span>
-                ))}
-                {img.prompt && <p className="said">“{img.prompt}”</p>}
-              </div>
-            )}
-            <button className="next main" onClick={props.onContinue}>
-              <b>Carry on from this</b>
-              <span>Show it in the room, where everything in it can still be moved</span>
-            </button>
-          </>
-        )}
-
-        {img.kind === 'room' && (
-          <button className="next main" onClick={props.onContinue}>
-            <b>Design from this view</b>
-            <span>Use this photo of the room as the starting picture</span>
-          </button>
-        )}
-
-        {img.kind === 'item' && (
-          <>
-            <div className="fields">
-              <Field
-                value={img.name}
-                placeholder="Name"
-                label="Name"
-                onSave={(name) => props.onUpdate({ name })}
-                allowEmpty
-              />
-              <Field
-                value={img.note}
-                placeholder="Size, price, link…"
-                label="Notes"
-                onSave={(note) => props.onUpdate({ note })}
-                allowEmpty
-              />
-            </div>
-            <button className="next" disabled={isCutting(img)} onClick={() => props.onCutout(!img.cutout)}>
-              <b>{isCutting(img) ? 'Cutting it out…' : img.cutout ? 'Use the whole photo' : 'Cut it out again'}</b>
-              <span>
-                {isCutting(img)
-                  ? 'Lifting the thing off its background'
-                  : img.cutout
-                    ? 'Bring the background back if the cut-out looks wrong'
-                    : 'Try again to lift the thing off its background'}
-              </span>
-            </button>
-          </>
-        )}
-      </div>
-    </div>
+    <input
+      ref={props.ref}
+      type="file"
+      accept="image/*"
+      multiple
+      hidden
+      onChange={(e) => {
+        const files = Array.from(e.target.files ?? [])
+        e.target.value = ''
+        if (files.length) props.onFiles(files)
+      }}
+    />
   )
 }
 
-/** Anything wrapped in this opens the photo picker when tapped. */
+/** Anything wrapped in this opens the photo picker when tapped, and takes photos dropped onto it. */
 function FileLabel(props: { className?: string; onFiles: (files: File[]) => void; children: ReactNode }) {
   const [over, setOver] = useState(false)
   return (
@@ -966,37 +685,18 @@ function FileLabel(props: { className?: string; onFiles: (files: File[]) => void
         if (files.length) props.onFiles(files)
       }}
     >
-      <input
-        type="file"
-        accept="image/*"
-        multiple
-        hidden
-        onChange={(e) => {
-          const files = Array.from(e.target.files ?? [])
-          e.target.value = ''
-          if (files.length) props.onFiles(files)
-        }}
-      />
+      <FileInput ref={null} onFiles={props.onFiles} />
       {props.children}
     </label>
   )
 }
 
-function AddZone(props: { title: string; hint?: string; big?: boolean; onFiles: (files: File[]) => void }) {
+function AddZone(props: { title: string; hint?: string; onFiles: (files: File[]) => void }) {
   return (
-    <FileLabel className={'addzone' + (props.big ? ' big' : '')} onFiles={props.onFiles}>
+    <FileLabel className="addzone" onFiles={props.onFiles}>
       <span className="plus">+</span>
       <b>{props.title}</b>
       {props.hint && <span>{props.hint}</span>}
-    </FileLabel>
-  )
-}
-
-function AddTile(props: { label: string; className?: string; onFiles: (files: File[]) => void }) {
-  return (
-    <FileLabel className={`thumb addtile ${props.className ?? ''}`} onFiles={props.onFiles}>
-      <span className="plus">+</span>
-      <span>{props.label}</span>
     </FileLabel>
   )
 }
@@ -1007,7 +707,9 @@ function Field(props: {
   placeholder?: string
   className?: string
   allowEmpty?: boolean
+  autoFocus?: boolean
   onSave: (value: string) => void
+  onDone?: () => void
 }) {
   const [value, setValue] = useState(props.value)
   useEffect(() => setValue(props.value), [props.value])
@@ -1017,13 +719,14 @@ function Field(props: {
       value={value}
       aria-label={props.label}
       placeholder={props.placeholder}
+      autoFocus={props.autoFocus}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
       onBlur={() => {
         const next = value.trim()
-        if (next === props.value) return
-        if (!next && !props.allowEmpty) return setValue(props.value)
-        props.onSave(next)
+        if (next !== props.value && (next || props.allowEmpty)) props.onSave(next)
+        else setValue(props.value)
+        props.onDone?.()
       }}
     />
   )

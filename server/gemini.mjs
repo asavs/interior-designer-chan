@@ -1,9 +1,6 @@
 const API = 'https://generativelanguage.googleapis.com/v1beta/models'
 
-export const IMAGE_MODELS = {
-  fast: process.env.IMAGE_MODEL_FAST || 'gemini-3.1-flash-image',
-  best: process.env.IMAGE_MODEL_BEST || 'gemini-3-pro-image',
-}
+const IMAGE_MODEL = process.env.IMAGE_MODEL_FAST || 'gemini-3.1-flash-image'
 const TEXT_MODEL = process.env.TEXT_MODEL || 'gemini-3.8-flash'
 
 /** The app's own key wins over a machine-wide GEMINI_API_KEY, which Node will not let a .env file override. */
@@ -71,11 +68,11 @@ function sceneParts(base, items, guide) {
 }
 
 /**
- * @param {{ base: { part: object }, items: { part: object, name?: string, note?: string }[], prompt: string, quality: 'fast' | 'best' }} input
+ * @param {{ base: { part: object }, items: { part: object, name?: string, note?: string }[], prompt: string }} input
  * @returns {Promise<{ bytes: Buffer, mime: string, model: string }>}
  */
-export async function renderDesign({ base, items, guide, prompt, quality }) {
-  const model = IMAGE_MODELS[quality] || IMAGE_MODELS.fast
+export async function renderDesign({ base, items, guide, prompt }) {
+  const model = IMAGE_MODEL
   const request =
     prompt.trim() ||
     (guide
@@ -140,44 +137,6 @@ export async function renderDesign({ base, items, guide, prompt, quality }) {
   }
 }
 
-/** @returns {Promise<{ title: string, prompt: string }[]>} */
-export async function suggestIdeas({ base, items }) {
-  const brief = [
-    'You are a warm, practical interior designer helping a couple furnish their home. Prefer changes that need no renovation: furniture, rugs, art, lighting, textiles, plants.',
-    items.length
-      ? 'Look at the ROOM and the ITEMs they are considering buying. Propose 4 clearly different ways to arrange or combine them in this room. You may leave an item out if it does not suit the room, and say so in the title.'
-      : 'Look at the ROOM. Propose 4 clearly different directions for furnishing and styling it.',
-    'For each: "title" is 2 to 4 words. "prompt" is one or two sentences telling an image editor exactly what to place and where, referring to items by name and to real features of this room (the window, the left wall, the corner by the door).',
-  ].join('\n\n')
-
-  const json = await call(
-    TEXT_MODEL,
-    {
-      contents: [{ role: 'user', parts: [...sceneParts(base, items), { text: brief }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'ARRAY',
-          items: {
-            type: 'OBJECT',
-            properties: { title: { type: 'STRING' }, prompt: { type: 'STRING' } },
-            required: ['title', 'prompt'],
-          },
-        },
-      },
-    },
-    60_000,
-  )
-
-  const text = (json.candidates?.[0]?.content?.parts ?? [])
-    .filter((p) => p.text && !p.thought)
-    .map((p) => p.text)
-    .join('')
-  const ideas = JSON.parse(text)
-  if (!Array.isArray(ideas) || !ideas.length) throw new UpstreamError('No ideas came back. Try again.')
-  return ideas.slice(0, 4)
-}
-
 /**
  * Names a photo so nobody has to type: the room it shows, or the product in it.
  * "confident" is false when a person could not tell at a glance, and the app asks instead.
@@ -232,7 +191,7 @@ export async function isolateProduct({ part, name }) {
   ].join('\n\n')
 
   const json = await call(
-    IMAGE_MODELS.fast,
+    IMAGE_MODEL,
     {
       contents: [{ role: 'user', parts: [part, { text: brief }] }],
       generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },

@@ -31,8 +31,6 @@ export type Img = {
 }
 
 export type State = { rooms: Room[]; images: Img[] }
-export type Idea = { title: string; prompt: string }
-export type Quality = 'fast' | 'best'
 type Changed = { state: State; id: string }
 
 async function call<T>(method: string, url: string, body?: unknown): Promise<T> {
@@ -78,12 +76,9 @@ export const api = {
     baseId: string
     parentId?: string
     itemIds: string[]
-    prompt: string
-    quality: Quality
     layout?: Placement[]
     guideDataUrl?: string
   }) => call<Changed>('POST', '/api/render', body),
-  ideas: (body: { baseId: string; itemIds: string[] }) => call<{ ideas: Idea[] }>('POST', '/api/ideas', body),
 }
 
 /** A thing whose cut-out is still being made. */

@@ -5,7 +5,7 @@ import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { createReadStream } from 'node:fs'
 import { mkdir, readFile, writeFile, rename, unlink, stat } from 'node:fs/promises'
-import { apiKey, isolateProduct, namePhoto, renderDesign, suggestIdeas } from './gemini.mjs'
+import { apiKey, isolateProduct, namePhoto, renderDesign } from './gemini.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, 'data')
@@ -258,7 +258,6 @@ const routes = {
     const room = findRoom(body.roomId)
     const prompt = text(body.prompt, 2000)
     const { items, input } = await scene(body)
-    const quality = body.quality === 'best' ? 'best' : 'fast'
     const layout = cleanLayout(body.layout, items)
     let guide
     if (layout.length && body.guideDataUrl) {
@@ -267,7 +266,7 @@ const routes = {
     }
     const placed = new Set(guide ? layout.map((p) => p.itemId) : [])
     input.items.forEach((item, i) => (item.placed = placed.has(items[i].id)))
-    const out = await renderDesign({ ...input, guide, prompt, quality })
+    const out = await renderDesign({ ...input, guide, prompt })
     const { id, file } = await storeBytes(out.bytes, out.mime)
     db.images.push({
       id,
@@ -312,11 +311,6 @@ const routes = {
       await save()
     }
     return { state: db, id }
-  },
-
-  'POST /api/ideas': async (_, body) => {
-    const { input } = await scene(body)
-    return { ideas: await suggestIdeas(input) }
   },
 }
 
