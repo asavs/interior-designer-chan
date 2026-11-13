@@ -12,8 +12,8 @@ These came from the people who use it. They outrank convenience.
    visually secondary.
 2. **No modes.** A picture of a room is always a live canvas. There is no "edit" screen to enter and no "done"
    to press: things are dragged where they sit, in the page.
-3. **A room is a loom.** The room photo is the top of a thread. Making a design hangs a few options beneath the
-   picture it came from, and any picture in the thread can be carried on or branched again.
+3. **A room is a loom.** The room photo is the top of a thread. Making a design hangs it beneath the picture it
+   came from, beside any made there before, and any picture in the thread can be carried on or branched again.
 4. **Things are playthings.** Whatever enters the library becomes a cut-out that can be dragged, resized, rotated
    and removed, and it stays that way after a design is made. Never leave the user with an object baked into a
    picture that they can no longer move.

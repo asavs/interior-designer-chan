@@ -23,8 +23,6 @@ type Pending = { key: number; roomId: string; parentId: string }
 
 const blankDraft: Draft = { prompt: '', quality: 'fast', ideas: [] }
 const ROOM_NAMES = ['Living room', 'Bedroom', 'Kitchen', 'Dining room', 'Office', 'Hallway', 'Bathroom']
-/** How many options one "Make it real" asks for. */
-const OPTIONS = 3
 
 const roomPhotos = (room: Room, images: Img[]) =>
   images.filter((i) => i.roomId === room.id && i.kind === 'room').sort((a, b) => a.createdAt - b.createdAt)
@@ -229,7 +227,7 @@ export default function App() {
     guessName('room', res.id)
   }
 
-  /** Asks for a few options under one picture. They arrive one by one; the first becomes the thread. */
+  /** Makes one design under a picture and follows it. Pressing again hangs another option beside it. */
   async function generate(target: Room, node: Img) {
     const draft = drafts[target.id] ?? blankDraft
     const layout = layoutOf(node)
@@ -237,39 +235,26 @@ export default function App() {
     if ((!layout.length && !draft.prompt.trim()) || rendering.current.has(node.id)) return
     rendering.current.add(node.id)
 
-    const keys = Array.from({ length: OPTIONS }, () => nextKey.current++)
-    setPending((p) => [...p, ...keys.map((key) => ({ key, roomId: target.id, parentId: node.id }))])
-    const sticker = (id: string) => {
-      const item = items.find((i) => i.id === id)
-      return item && stickerUrl(item)
-    }
-    const guideDataUrl = layout.length ? await attempt(() => composeGuide(fileUrl(clean), layout, sticker)) : undefined
-
-    const ready = !layout.length || guideDataUrl
-    let followed = false
-    await Promise.all(
-      keys.map(async (key) => {
-        if (ready) {
-          const res = await mutate(() =>
-            api.render({
-              roomId: target.id,
-              baseId: clean.id,
-              parentId: node.id,
-              itemIds: [...new Set(layout.map((p) => p.itemId))],
-              prompt: draft.prompt,
-              quality: draft.quality,
-              layout: layout.length ? layout : undefined,
-              guideDataUrl: guideDataUrl || undefined,
-            }),
-          )
-          if (res && !followed) {
-            followed = true
-            setChosen((c) => ({ ...c, [node.id]: res.id }))
-          }
-        }
-        setPending((p) => p.filter((x) => x.key !== key))
-      }),
-    )
+    const key = nextKey.current++
+    setPending((p) => [...p, { key, roomId: target.id, parentId: node.id }])
+    const res = await mutate(async () => {
+      const sticker = (id: string) => {
+        const item = items.find((i) => i.id === id)
+        return item && stickerUrl(item)
+      }
+      return api.render({
+        roomId: target.id,
+        baseId: clean.id,
+        parentId: node.id,
+        itemIds: [...new Set(layout.map((p) => p.itemId))],
+        prompt: draft.prompt,
+        quality: draft.quality,
+        layout: layout.length ? layout : undefined,
+        guideDataUrl: layout.length ? await composeGuide(fileUrl(clean), layout, sticker) : undefined,
+      })
+    })
+    if (res) setChosen((c) => ({ ...c, [node.id]: res.id }))
+    setPending((p) => p.filter((x) => x.key !== key))
     rendering.current.delete(node.id)
   }
 

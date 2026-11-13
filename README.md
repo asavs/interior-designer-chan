@@ -3,9 +3,9 @@
 See furniture, rugs and art in your own rooms before you buy them.
 
 Add a photo of a room. Add photos of the things you are considering. Each thing becomes a cut-out you can drag,
-pinch and twist into place right on the room photo, like a sticker. "Make it real" hangs a few photorealistic
-options beneath it. Pick one and carry on from there, or go back up and branch a different way: everything in
-every picture stays movable.
+pinch and twist into place right on the room photo, like a sticker. "Make it real" hangs a photorealistic
+design beneath it. Carry on from there, or go back up, change something and make another to branch a different
+way: everything in every picture stays movable.
 
 It runs on your own computer, keeps your photos there, and is built for an iPhone first.
 
@@ -54,8 +54,7 @@ Read from the environment or from `.env`.
   two fingers anywhere resize and rotate it. With a mouse, a corner handle turns and resizes, the scroll wheel
   resizes, arrow keys nudge and Delete removes.
 - **Make it real** sends the room photo, the rough collage and the original photos of the things to the image
-  model, asking it to keep each thing where it was put and make it physically believable. It asks for three
-  options at once.
+  model, asking it to keep each thing where it was put and make it physically believable.
 - **A room is a thread of pictures.** Options appear under the picture they were made from. Tapping one carries
   the thread on from it, with its own options beneath. Designs remember their pieces, so moving something in a
   finished design redraws from the original photo.
