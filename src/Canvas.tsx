@@ -2,10 +2,11 @@ import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from '
 import { fileUrl, stickerUrl, type Img, type Placement } from './api'
 
 type Point = { x: number; y: number }
-type Gesture =
-  | { kind: 'drag'; key: string; start: Placement; from: Point }
-  | { kind: 'pinch'; key: string; start: Placement; dist: number; angle: number; mid: Point }
-  | { kind: 'handle'; key: string; start: Placement; centre: Point; dist: number; angle: number }
+type Gesture = { key: string; start: Placement; raised?: boolean } & (
+  | { kind: 'drag'; from: Point }
+  | { kind: 'pinch'; dist: number; angle: number; mid: Point }
+  | { kind: 'handle'; centre: Point; dist: number; angle: number }
+)
 
 const QUARTER = Math.PI / 2
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
@@ -24,8 +25,11 @@ const span = (a: Point, b: Point) => ({
 
 /**
  * A picture whose things can always be moved. It sits in the page like any image: a finger on the picture
- * scrolls the page, a finger on a thing drags it. While a thing is held, the whole picture belongs to it, so a
+ * scrolls or swipes, a finger on a thing drags it. While a thing is held, the whole picture belongs to it, so a
  * second finger anywhere pinches and twists.
+ *
+ * There are no buttons for arranging. Moving a thing brings it to the front, a double tap flips it, the small
+ * cross takes it away, and a tap anywhere else lets go.
  *
  * When `result` is given, the finished design is shown and the things sit invisibly where they were placed,
  * ready to be grabbed. A tap on the picture shows them.
@@ -36,7 +40,6 @@ export function Canvas(props: {
   layout: Placement[]
   items: Img[]
   onChange: (layout: Placement[]) => void
-  onFocus?: () => void
   children?: ReactNode
 }) {
   const [selected, setSelected] = useState<string | null>(null)
@@ -44,6 +47,7 @@ export function Canvas(props: {
   // away from where they were placed.
   const [peek, setPeek] = useState(false)
   useEffect(() => setPeek(false), [props.result?.id])
+  const wrap = useRef<HTMLDivElement>(null)
   const el = useRef<HTMLDivElement>(null)
 
   // Gesture bookkeeping lives in refs: it changes on every pointer event and must never be stale.
@@ -53,6 +57,7 @@ export function Canvas(props: {
   const gesture = useRef<Gesture | null>(null)
   const travelled = useRef(0)
   const startedOnSticker = useRef(false)
+  const lastTap = useRef<{ key: string | null; at: number }>({ key: null, at: 0 })
 
   const select = (key: string | null) => {
     live.current.selected = key
@@ -65,7 +70,19 @@ export function Canvas(props: {
   const change = (key: string, patch: Partial<Placement>) =>
     commit(live.current.layout.map((p) => (p.key === key ? { ...p, ...patch } : p)))
 
-  // A thing dropped in from the tray arrives already held.
+  /** Applies one step of a gesture. The first step also brings the thing to the front. */
+  function move(g: Gesture, patch: Partial<Placement>) {
+    let next = live.current.layout
+    const held = next.find((p) => p.key === g.key)
+    if (!held) return
+    if (!g.raised) {
+      g.raised = true
+      next = [...next.filter((p) => p.key !== g.key), held]
+    }
+    commit(next.map((p) => (p.key === g.key ? { ...p, ...patch } : p)))
+  }
+
+  // A thing dropped in from the dock arrives already held.
   const known = useRef(new Set(props.layout.map((p) => p.key)))
   useEffect(() => {
     const fresh = props.layout.filter((p) => !known.current.has(p.key))
@@ -104,17 +121,23 @@ export function Canvas(props: {
       e.preventDefault()
       change(p.key, { w: clamp(p.w * Math.exp(-e.deltaY * 0.0015), 0.04, 2.5) })
     }
+    // A touch anywhere outside this picture lets go.
+    const away = (e: Event) => {
+      if (!wrap.current?.contains(e.target as Node)) select(null)
+    }
     // Safari's own pinch-to-zoom-the-page gesture would otherwise fight the sticker pinch.
     const stop = (e: Event) => e.preventDefault()
     const node = el.current
     // Capture, so a held thing gets the arrow keys before a surrounding carousel pages with them.
     window.addEventListener('keydown', onKey, true)
     node?.addEventListener('wheel', onWheel, { passive: false })
+    document.addEventListener('pointerdown', away)
     document.addEventListener('gesturestart', stop)
     document.addEventListener('gesturechange', stop)
     return () => {
       window.removeEventListener('keydown', onKey, true)
       node?.removeEventListener('wheel', onWheel)
+      document.removeEventListener('pointerdown', away)
       document.removeEventListener('gesturestart', stop)
       document.removeEventListener('gesturechange', stop)
     }
@@ -133,6 +156,10 @@ export function Canvas(props: {
     if (e.pointerType === 'mouse' && e.button !== 0) return
     const target = e.target as HTMLElement
     const hit = target.closest<HTMLElement>('[data-key]')?.dataset.key ?? null
+    if (hit && target.closest('[data-remove]')) {
+      commit(live.current.layout.filter((p) => p.key !== hit))
+      return select(null)
+    }
     // Nothing held and nothing touched: this finger is scrolling the page.
     if (!hit && !live.current.selected) return
     try {
@@ -154,10 +181,7 @@ export function Canvas(props: {
         gesture.current = { kind: 'handle', key: start.key, start, centre, dist, angle }
         return
       }
-      if (hit) {
-        select(hit)
-        props.onFocus?.()
-      }
+      if (hit) select(hit)
       begin(hit)
     } else {
       // A second finger anywhere on the picture pinches the held thing; it need not land on it.
@@ -184,10 +208,10 @@ export function Canvas(props: {
 
     if (g.kind === 'drag') {
       // A tap must not count as a move, or touching a finished design would discard it.
-      if (travelled.current > 3) change(g.key, moved(g.from, at))
+      if (travelled.current > 3) move(g, moved(g.from, at))
     } else if (g.kind === 'handle') {
       const now = span(g.centre, at)
-      change(g.key, {
+      move(g, {
         w: clamp((g.start.w * now.dist) / g.dist, 0.04, 2.5),
         rot: snap(g.start.rot + now.angle - g.angle),
       })
@@ -195,7 +219,7 @@ export function Canvas(props: {
       const pts = [...pointers.current.values()]
       if (pts.length < 2) return
       const now = span(pts[0], pts[1])
-      change(g.key, {
+      move(g, {
         ...moved(g.mid, now.mid),
         w: clamp((g.start.w * now.dist) / g.dist, 0.04, 2.5),
         rot: snap(g.start.rot + now.angle - g.angle),
@@ -206,94 +230,74 @@ export function Canvas(props: {
   function onPointerUp(e: PointerEvent<HTMLDivElement>) {
     if (!pointers.current.delete(e.pointerId)) return
     if (pointers.current.size) return begin(gesture.current?.key ?? live.current.selected)
-    if (!startedOnSticker.current && travelled.current < 8) select(null)
+    const key = gesture.current?.key ?? null
     gesture.current = null
-  }
+    if (travelled.current >= 8) return
+    if (!startedOnSticker.current) return select(null)
 
-  const current = props.layout.find((p) => p.key === selected)
-  const reorder = (toFront: boolean) => {
-    if (!current) return
-    const rest = props.layout.filter((p) => p.key !== current.key)
-    commit(toFront ? [...rest, current] : [current, ...rest])
+    // Two quick taps on the same thing flip it.
+    const now = performance.now()
+    const held = live.current.layout.find((p) => p.key === key)
+    if (held && lastTap.current.key === key && now - lastTap.current.at < 350) {
+      change(held.key, { flip: !held.flip })
+      lastTap.current = { key: null, at: 0 }
+    } else {
+      lastTap.current = { key, at: now }
+    }
   }
 
   return (
-    <>
-      <div className="node-pic">
-        <div
-          ref={el}
-          className={'canvas' + (selected ? ' holding' : '')}
-          // While a thing is held, a mouse drag anywhere on the picture belongs to it, not to a carousel.
-          data-carousel-no-drag={selected ? '' : undefined}
-          onClick={(e) => {
-            props.onFocus?.()
-            if (props.result) setPeek((on) => !!(e.target as HTMLElement).closest('[data-key]') || !on)
-          }}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-        >
-          <img className="stage-photo" src={fileUrl(props.result ?? props.clean)} alt="" draggable={false} />
-          {props.layout.map((p) => {
-            const item = props.items.find((i) => i.id === p.itemId)
-            if (!item) return null
-            return (
-              <div
-                key={p.key}
-                data-key={p.key}
-                data-carousel-no-drag=""
-                className={
-                  'sticker' +
-                  (p.key === selected ? ' selected' : '') +
-                  (props.result ? (peek ? ' peek' : ' ghost') : '')
-                }
-                style={{
-                  left: `${p.x * 100}%`,
-                  top: `${p.y * 100}%`,
-                  width: `${p.w * 100}%`,
-                  transform: `translate(-50%, -50%) rotate(${p.rot}rad)`,
-                }}
-              >
-                <img
-                  src={stickerUrl(item)}
-                  alt={item.name}
-                  draggable={false}
-                  style={p.flip ? { transform: 'scaleX(-1)' } : undefined}
-                />
-                {p.key === selected && <span className="handle" data-handle aria-hidden />}
-              </div>
-            )
-          })}
-        </div>
-        {props.children}
+    <div ref={wrap} className="node-pic">
+      <div
+        ref={el}
+        className={'canvas' + (selected ? ' holding' : '')}
+        // While a thing is held, a mouse drag anywhere on the picture belongs to it, not to a carousel.
+        data-carousel-no-drag={selected ? '' : undefined}
+        onClick={(e) => {
+          if (props.result) setPeek((on) => !!(e.target as HTMLElement).closest('[data-key]') || !on)
+        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        <img className="stage-photo" src={fileUrl(props.result ?? props.clean)} alt="" draggable={false} />
+        {props.layout.map((p) => {
+          const item = props.items.find((i) => i.id === p.itemId)
+          if (!item) return null
+          const held = p.key === selected
+          return (
+            <div
+              key={p.key}
+              data-key={p.key}
+              data-carousel-no-drag=""
+              className={'sticker' + (held ? ' selected' : '') + (props.result ? (peek ? ' peek' : ' unseen') : '')}
+              style={{
+                left: `${p.x * 100}%`,
+                top: `${p.y * 100}%`,
+                width: `${p.w * 100}%`,
+                transform: `translate(-50%, -50%) rotate(${p.rot}rad)`,
+              }}
+            >
+              <img
+                src={stickerUrl(item)}
+                alt={item.name}
+                draggable={false}
+                style={p.flip ? { transform: 'scaleX(-1)' } : undefined}
+              />
+              {held && (
+                <>
+                  <span className="remove" data-remove role="button" aria-label="Take this out of the picture">
+                    ×
+                  </span>
+                  <span className="handle" data-handle aria-hidden />
+                </>
+              )}
+            </div>
+          )
+        })}
       </div>
-
-      {current && (
-        <div className="tools">
-          <button className="ghost" onClick={() => change(current.key, { flip: !current.flip })}>
-            Flip
-          </button>
-          <button className="ghost" onClick={() => reorder(true)}>
-            To front
-          </button>
-          <button className="ghost" onClick={() => reorder(false)}>
-            To back
-          </button>
-          <button
-            className="ghost danger"
-            onClick={() => {
-              commit(props.layout.filter((p) => p.key !== current.key))
-              select(null)
-            }}
-          >
-            Remove
-          </button>
-          <button className="ghost" aria-label="Let go of this thing" onClick={() => select(null)}>
-            ✓
-          </button>
-        </div>
-      )}
-    </>
+      {props.children}
+    </div>
   )
 }
