@@ -1389,8 +1389,10 @@ h2.title {
   display: none;
 }
 
+/* Slides keep their own height, so a short picture is not stretched to match a tall neighbour. */
 .options-row {
   display: flex;
+  align-items: flex-start;
   gap: 12px;
 }
 

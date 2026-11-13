@@ -352,7 +352,12 @@ export default function App() {
             </nav>
 
             <RoomView
-              key={room.id}
+              rooms={state.rooms}
+              rootOf={(r) => {
+                const photos = roomPhotos(r, images)
+                return photos.find((photo) => photo.id === drafts[r.id]?.rootId) ?? photos[0]
+              }}
+              onRoom={(r) => setRoomId(r.id)}
               room={room}
               images={images}
               items={items}
@@ -451,6 +456,9 @@ function RoomView(props: {
   thinking: boolean
   busy: boolean
   wide: boolean
+  rooms: Room[]
+  rootOf: (room: Room) => Img | undefined
+  onRoom: (room: Room) => void
   onPatch: (patch: Partial<Draft>) => void
   onArrange: (node: Img, layout: Placement[] | null) => void
   onChoose: (parent: Img, option: Img) => void
@@ -465,7 +473,12 @@ function RoomView(props: {
 }) {
   const { room, draft, items, images } = props
   const photos = roomPhotos(room, images)
-  const root = photos.find((p) => p.id === draft.rootId) ?? photos[0]
+  const root = props.rootOf(room)
+  /** Rooms that have a photo, each shown by the photo its thread starts from. */
+  const tops = props.rooms.flatMap((r) => {
+    const top = props.rootOf(r)
+    return top ? [{ room: r, top }] : []
+  })
   const thread = root ? threadFrom(root, images, props.chosen) : []
   const focused = thread.find((n) => n.id === props.focusId) ?? thread[thread.length - 1]
   const hasWords = Boolean(draft.prompt.trim())
@@ -616,6 +629,7 @@ function RoomView(props: {
                 <section key={parent ? `under-${parent.id}` : node.id} className="level">
                   {parent ? (
                     <Options
+                      label="Options"
                       index={options.indexOf(node)}
                       count={options.length}
                       making={props.pending.some((x) => x.parentId === parent.id)}
@@ -628,7 +642,18 @@ function RoomView(props: {
                       ))}
                     </Options>
                   ) : (
-                    picture(node)
+                    <Options
+                      label="Rooms"
+                      index={tops.findIndex((t) => t.room.id === room.id)}
+                      count={tops.length}
+                      onIndex={(i) => tops[i] && tops[i].room.id !== room.id && props.onRoom(tops[i].room)}
+                    >
+                      {tops.map((t) => (
+                        <CarouselItem key={t.room.id} className="option">
+                          {picture(t.top)}
+                        </CarouselItem>
+                      ))}
+                    </Options>
                   )}
 
                   {depth === 0 && (
@@ -687,13 +712,15 @@ function RoomView(props: {
 }
 
 /**
- * The designs made under one picture, side by side. A sideways swipe, the arrows or the arrow keys move between
- * them, and the one in view is the one the thread carries on from.
+ * Pictures side by side: the designs made under one picture, or the rooms themselves. A sideways swipe, the
+ * arrows or the arrow keys move between them, and the one in view is the one the page carries on from.
+ * Designs get a counter with arrows; rooms are already named by the chips above.
  */
 function Options(props: {
+  label: 'Options' | 'Rooms'
   index: number
   count: number
-  making: boolean
+  making?: boolean
   onIndex: (index: number) => void
   children: ReactNode
 }) {
@@ -718,12 +745,12 @@ function Options(props: {
     <div>
       <Carousel
         className="options"
-        aria-label="Options"
+        aria-label={props.label}
         controller={controller}
         defaultPage={page}
         onPageChange={(next) => props.onIndex(next - 1)}
       >
-        {(props.count > 1 || props.making) && (
+        {props.label === 'Options' && (props.count > 1 || props.making) && (
           <div className="pager">
             <CarouselPrevious className="ghost small" aria-label="Previous option">
               ‹

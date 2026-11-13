@@ -40,6 +40,7 @@ These came from the people who use it. They outrank convenience.
   (`itemIds`) and, when it differs from `baseId`, the picture it hangs under in the thread (`parentId`). A
   design made from stickers is always drawn from the clean picture plus every sticker, never on top of rendered
   pixels, which is what keeps its things movable.
+- Rooms are a carousel too, of the photo each room's thread starts from, using the same `Options` component.
 - The designs under one picture are a carousel (`Options` in `App.tsx`). The slide in view is the option the
   thread follows. Its page is set through a controller once the slides are measured, because the carousel
   drops a starting page given before that.

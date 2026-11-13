@@ -46,6 +46,7 @@ Read from the environment or from `.env`.
 
 ## How it works
 
+- **Rooms** sit side by side: swipe the top picture sideways, or tap a room's chip, to move between them.
 - **Rooms** start from a photo. The room is named from what the photo shows, and you are asked only when that is
   not obvious.
 - **Things** are cut out when added. A plain backdrop is removed in the browser. A busy photo is sent to the image
