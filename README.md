@@ -55,8 +55,9 @@ Read from the environment or from `.env`.
   resizes, arrow keys nudge and Delete removes.
 - **Make it real** sends the room photo, the rough collage and the original photos of the things to the image
   model, asking it to keep each thing where it was put and make it physically believable.
-- **A room is a thread of pictures.** Options appear under the picture they were made from. Tapping one carries
-  the thread on from it, with its own options beneath. Designs remember their pieces, so moving something in a
+- **A room is a thread of pictures.** The designs made from a picture sit beneath it side by side. Swipe
+  sideways, or use the arrows, to move between them; the one in view is the one the thread carries on from,
+  with its own designs beneath. Designs remember their pieces, so moving something in a
   finished design redraws from the original photo.
 - **On a wide screen** the thread sits beside the things library, and photos can be dropped onto any add tile.
 

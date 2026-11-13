@@ -107,12 +107,13 @@ export function Canvas(props: {
     // Safari's own pinch-to-zoom-the-page gesture would otherwise fight the sticker pinch.
     const stop = (e: Event) => e.preventDefault()
     const node = el.current
-    window.addEventListener('keydown', onKey)
+    // Capture, so a held thing gets the arrow keys before a surrounding carousel pages with them.
+    window.addEventListener('keydown', onKey, true)
     node?.addEventListener('wheel', onWheel, { passive: false })
     document.addEventListener('gesturestart', stop)
     document.addEventListener('gesturechange', stop)
     return () => {
-      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keydown', onKey, true)
       node?.removeEventListener('wheel', onWheel)
       document.removeEventListener('gesturestart', stop)
       document.removeEventListener('gesturechange', stop)
@@ -222,6 +223,8 @@ export function Canvas(props: {
         <div
           ref={el}
           className={'canvas' + (selected ? ' holding' : '')}
+          // While a thing is held, a mouse drag anywhere on the picture belongs to it, not to a carousel.
+          data-carousel-no-drag={selected ? '' : undefined}
           onClick={(e) => {
             props.onFocus?.()
             if (props.result) setPeek((on) => !!(e.target as HTMLElement).closest('[data-key]') || !on)
@@ -239,6 +242,7 @@ export function Canvas(props: {
               <div
                 key={p.key}
                 data-key={p.key}
+                data-carousel-no-drag=""
                 className={
                   'sticker' +
                   (p.key === selected ? ' selected' : '') +

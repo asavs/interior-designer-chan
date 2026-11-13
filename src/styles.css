@@ -1242,10 +1242,6 @@ h2.title {
   scroll-margin-top: 12px;
 }
 
-.node + .node {
-  margin-top: 26px;
-}
-
 .node-pic {
   position: relative;
   border-radius: 12px;
@@ -1254,16 +1250,17 @@ h2.title {
   overflow: hidden;
 }
 
+/* Drawn inside the picture's edge, so a carousel's clipping cannot cut it off. */
 .node.focused .node-pic {
   outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline-offset: -2px;
 }
 
 /* A finger on the picture scrolls the page; a finger on a thing moves it. While a thing is held the picture
    takes every touch, so a second finger anywhere can pinch and twist. */
 .canvas {
   position: relative;
-  touch-action: pan-y;
+  touch-action: pan-x pan-y;
 }
 
 .canvas.holding {
@@ -1311,25 +1308,6 @@ h2.title {
   margin: 10px 0 0;
 }
 
-.branch {
-  margin: 14px 2px 6px;
-}
-
-.options .thumb {
-  width: 112px;
-  height: 84px;
-}
-
-.options .pending {
-  display: grid;
-  place-items: center;
-}
-
-.options .pending .kao {
-  margin: 0;
-  font-size: 12px;
-}
-
 .composer .step {
   margin-top: 20px;
 }
@@ -1371,5 +1349,72 @@ h2.title {
 
   .node .tools .ghost {
     flex: 0 1 auto;
+  }
+}
+
+/* ---- options under a picture: swipe sideways between them ---- */
+
+.level + .level {
+  margin-top: 22px;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.pager .fine {
+  margin: 0;
+}
+
+.pager .ghost {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 20px;
+}
+
+.pager [aria-disabled='true'] {
+  opacity: 0.3;
+}
+
+.options-view {
+  scrollbar-width: none;
+  border-radius: 12px;
+}
+
+.options-view::-webkit-scrollbar {
+  display: none;
+}
+
+.options-row {
+  display: flex;
+  gap: 12px;
+}
+
+.option {
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+.option .node {
+  margin-top: 0;
+}
+
+.making {
+  min-height: 180px;
+  margin-top: 22px;
+  box-shadow: none;
+}
+
+.making .kao {
+  margin-bottom: 6px;
+}
+
+@media (min-width: 900px) {
+  .option .node-pic {
+    margin: 0 auto;
   }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   api,
   fileUrl,
@@ -14,6 +14,15 @@ import {
   type Room,
   type State,
 } from './api'
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  CarouselViewport,
+  createCarouselController,
+} from '@ui-sdk/react/carousel'
 import { Canvas } from './Canvas'
 import { composeGuide, cutOut, shrink } from './cutout'
 
@@ -474,6 +483,35 @@ function RoomView(props: {
   const making = focused ? props.pending.some((p) => p.parentId === focused.id) : false
   const canMake = focused ? props.layoutOf(focused).length > 0 || hasWords : false
 
+  const picture = (node: Img) => {
+    const changed = props.isChanged(node)
+    const finished = node.kind === 'render' && !!node.layout?.length && !changed
+    const clean = cleanOf(node, images)
+    return (
+      <div id={`node-${node.id}`} className={'node' + (node.id === focused.id && thread.length > 1 ? ' focused' : '')}>
+        <Canvas
+          clean={clean}
+          result={finished && clean !== node ? node : undefined}
+          layout={props.layoutOf(node)}
+          items={items}
+          onChange={(layout) => props.onArrange(node, layout)}
+          onFocus={() => props.onFocus(node)}
+        >
+          {node.kind === 'render' && (
+            <button className="open" aria-label="Open this design" onClick={() => props.onView(node.id)}>
+              ⤢
+            </button>
+          )}
+          {node.kind === 'render' && changed && (
+            <button className="pill" onClick={() => props.onArrange(node, null)}>
+              Back to the result
+            </button>
+          )}
+        </Canvas>
+      </div>
+    )
+  }
+
   const composer = focused && (
     <div className="composer">
       <h3 className="step">What do you want to put in here?</h3>
@@ -571,49 +609,41 @@ function RoomView(props: {
         <div className="room-grid">
           <div className="thread">
             {thread.map((node, depth) => {
-              const options = optionsUnder(node, images)
-              const waiting = props.pending.filter((p) => p.parentId === node.id)
-              const next = thread[depth + 1]
-              const changed = props.isChanged(node)
-              const finished = node.kind === 'render' && !!node.layout?.length && !changed
-              const clean = cleanOf(node, images)
+              const parent: Img | undefined = thread[depth - 1]
+              const options = parent ? optionsUnder(parent, images) : []
+              const last = depth === thread.length - 1
               return (
-                <section
-                  key={node.id}
-                  id={`node-${node.id}`}
-                  className={'node' + (node.id === focused.id && thread.length > 1 ? ' focused' : '')}
-                >
-                  <Canvas
-                    clean={clean}
-                    result={finished && clean !== node ? node : undefined}
-                    layout={props.layoutOf(node)}
-                    items={items}
-                    onChange={(layout) => props.onArrange(node, layout)}
-                    onFocus={() => props.onFocus(node)}
-                  >
-                    {node.kind === 'render' && (
-                      <button className="open" aria-label="Open this design" onClick={() => props.onView(node.id)}>
-                        ⤢
-                      </button>
-                    )}
-                    {node.kind === 'render' && changed && (
-                      <button className="pill" onClick={() => props.onArrange(node, null)}>
-                        Back to the result
-                      </button>
-                    )}
-                  </Canvas>
+                <section key={parent ? `under-${parent.id}` : node.id} className="level">
+                  {parent ? (
+                    <Options
+                      index={options.indexOf(node)}
+                      count={options.length}
+                      making={props.pending.some((x) => x.parentId === parent.id)}
+                      onIndex={(i) => options[i] && options[i] !== node && props.onChoose(parent, options[i])}
+                    >
+                      {options.map((o) => (
+                        <CarouselItem key={o.id} className="option">
+                          {picture(o)}
+                        </CarouselItem>
+                      ))}
+                    </Options>
+                  ) : (
+                    picture(node)
+                  )}
 
                   {depth === 0 && (
                     <div className="strip views">
-                      {photos.map((p) => (
+                      {photos.map((photo) => (
                         <button
-                          key={p.id}
+                          key={photo.id}
                           className="thumb"
-                          aria-pressed={p.id === root.id}
-                          aria-label={p.id === root.id ? 'Open this photo' : 'Use this view'}
-                          onClick={() => (p.id === root.id ? props.onView(p.id) : props.onPatch({ rootId: p.id }))}
+                          aria-pressed={photo.id === root.id}
+                          aria-label={photo.id === root.id ? 'Open this photo' : 'Use this view'}
+                          onClick={() =>
+                            photo.id === root.id ? props.onView(photo.id) : props.onPatch({ rootId: photo.id })
+                          }
                         >
-                          <img src={thumbUrl(p)} alt="" />
+                          <img src={thumbUrl(photo)} alt="" />
                         </button>
                       ))}
                       <AddTile label="Another angle" onFiles={props.onAddPhotos} />
@@ -637,31 +667,13 @@ function RoomView(props: {
 
                   {!props.wide && node.id === focused.id && composer}
 
-                  {(options.length > 0 || waiting.length > 0) && (
-                    <>
-                      <p className="fine branch">
-                        {options.length > 1 ? 'Options. Tap one to carry on from it.' : 'Carries on below.'}
-                      </p>
-                      <div className="strip options">
-                        {options.map((o) => (
-                          <button
-                            key={o.id}
-                            className="thumb"
-                            aria-pressed={o.id === next?.id}
-                            aria-label="Carry on from this option"
-                            onClick={() => props.onChoose(node, o)}
-                          >
-                            <img src={thumbUrl(o)} alt="" />
-                            {o.favorite && <span className="heart">♥</span>}
-                          </button>
-                        ))}
-                        {waiting.map((p) => (
-                          <div key={p.key} className="thumb pending">
-                            <span className="kao">(๑•̀ㅂ•́)و</span>
-                          </div>
-                        ))}
-                      </div>
-                    </>
+                  {last && props.pending.some((x) => x.parentId === node.id) && (
+                    <div className="node-pic pending making">
+                      <span>
+                        <span className="kao">(๑•̀ㅂ•́)و</span>
+                        Making it real…
+                      </span>
+                    </div>
                   )}
                 </section>
               )
@@ -671,6 +683,65 @@ function RoomView(props: {
         </div>
       )}
     </>
+  )
+}
+
+/**
+ * The designs made under one picture, side by side. A sideways swipe, the arrows or the arrow keys move between
+ * them, and the one in view is the one the thread carries on from.
+ */
+function Options(props: {
+  index: number
+  count: number
+  making: boolean
+  onIndex: (index: number) => void
+  children: ReactNode
+}) {
+  const controller = useMemo(() => createCarouselController(), [])
+  const page = props.index + 1
+
+  // Keep the carousel on the followed option: when it opens, when a new design arrives, and when "carry on
+  // from this" picks one in the viewer. It waits until the slides are measured, since a page set before that
+  // is dropped.
+  useEffect(() => {
+    let frame = 0
+    let tries = 0
+    const sync = () => {
+      if ((controller.getPageCount() ?? 0) < page && tries++ < 120) frame = requestAnimationFrame(sync)
+      else if (controller.getPage() !== page) controller.setPage(page)
+    }
+    frame = requestAnimationFrame(sync)
+    return () => cancelAnimationFrame(frame)
+  }, [page, props.count])
+
+  return (
+    <div>
+      <Carousel
+        className="options"
+        aria-label="Options"
+        controller={controller}
+        defaultPage={page}
+        onPageChange={(next) => props.onIndex(next - 1)}
+      >
+        {(props.count > 1 || props.making) && (
+          <div className="pager">
+            <CarouselPrevious className="ghost small" aria-label="Previous option">
+              ‹
+            </CarouselPrevious>
+            <span className="fine">
+              Option {page} of {props.count}
+              {props.making && ' · making another…'}
+            </span>
+            <CarouselNext className="ghost small" aria-label="Next option">
+              ›
+            </CarouselNext>
+          </div>
+        )}
+        <CarouselViewport className="options-view">
+          <CarouselContent className="options-row">{props.children}</CarouselContent>
+        </CarouselViewport>
+      </Carousel>
+    </div>
   )
 }
 
@@ -851,7 +922,7 @@ function Viewer(props: {
 }
 
 /** Anything wrapped in this opens the photo picker when tapped. */
-function FileLabel(props: { className?: string; onFiles: (files: File[]) => void; children: React.ReactNode }) {
+function FileLabel(props: { className?: string; onFiles: (files: File[]) => void; children: ReactNode }) {
   const [over, setOver] = useState(false)
   return (
     <label

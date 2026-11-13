@@ -40,8 +40,12 @@ These came from the people who use it. They outrank convenience.
   (`itemIds`) and, when it differs from `baseId`, the picture it hangs under in the thread (`parentId`). A
   design made from stickers is always drawn from the clean picture plus every sticker, never on top of rendered
   pixels, which is what keeps its things movable.
+- The designs under one picture are a carousel (`Options` in `App.tsx`). The slide in view is the option the
+  thread follows. Its page is set through a controller once the slides are measured, because the carousel
+  drops a starting page given before that.
 - Which option is followed under each picture, and arrangements in progress, are browser state only.
-- The canvas sits in the page with `touch-action: pan-y`, so a finger on the picture scrolls. Touching a thing
+- The canvas sits in the page with `touch-action: pan-x pan-y`, so a finger on the picture scrolls the page or
+  swipes between options. Touching a thing
   holds it, and while a thing is held the canvas takes every touch so a second finger anywhere can pinch.
 - Derived images (`thumb`, `cutout`, `cutoutThumb`) are made by the browser and uploaded. An effect in `App.tsx`
   fills in any that are missing, which is how both new uploads and new designs get them.
@@ -50,6 +54,10 @@ These came from the people who use it. They outrank convenience.
 
 - TypeScript in `src/`, plain ES modules in `server/`. Formatting is Prettier's: run `npm run format`.
 - Keep the server dependency-free. Adding a front-end dependency needs a reason a reader would accept.
+- Standard interface behaviours (carousels, popups, menus, focus and keyboard handling) come from UI SDK
+  (`@ui-sdk/react`), which is in beta: check a behaviour in the browser before relying on it. The sticker
+  gestures in `Canvas.tsx` are our own. Anything inside a carousel that must keep its own mouse drag carries
+  `data-carousel-no-drag`.
 - Comments explain why, not what. Docs describe the code as it is: no history, no "previously", no notes about
   how a change was made. Commit messages carry the past.
 - No compatibility paths for data shapes nobody depends on. Change the shape and the code together.
