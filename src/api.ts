@@ -20,7 +20,10 @@ export type Img = {
   cutoutThumb?: string
   createdAt: number
   favorite?: boolean
+  /** Designs: the clean picture the model was given. */
   baseId?: string
+  /** Designs: the picture in the thread this was branched from, when that is not baseId. */
+  parentId?: string
   itemIds?: string[]
   layout?: Placement[]
   prompt?: string
@@ -73,6 +76,7 @@ export const api = {
   render: (body: {
     roomId: string
     baseId: string
+    parentId?: string
     itemIds: string[]
     prompt: string
     quality: Quality

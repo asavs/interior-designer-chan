@@ -555,26 +555,6 @@ h2.title {
 
 /* ---- the room picture ---- */
 
-.base {
-  position: relative;
-  display: block;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  border-radius: 12px;
-  background: var(--soft);
-  overflow: hidden;
-}
-
-.hero {
-  margin-top: 12px;
-  box-shadow: var(--shadow);
-}
-
-.base .sticker {
-  pointer-events: none;
-}
-
 .tag {
   position: absolute;
   left: 10px;
@@ -741,67 +721,6 @@ h2.title {
   }
 }
 
-.arranger {
-  position: fixed;
-  inset: 0;
-  z-index: 8;
-  display: flex;
-  flex-direction: column;
-  background: #111419;
-  color: #eceef0;
-  touch-action: none;
-  overscroll-behavior: none;
-  --ink: #eceef0;
-  --muted: #9aa1ab;
-  --line: #343a44;
-  --soft: #272c34;
-  --card: #1d2128;
-  --accent: #9dbbe6;
-  --accent-ink: #14181e;
-  --seal: #e2604d;
-}
-
-.arranger-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
-}
-
-.arranger-bar .fine {
-  margin: 0;
-  text-align: center;
-}
-
-.arranger-box {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  place-items: center;
-  padding: 0 6px;
-  overflow: hidden;
-}
-
-.canvas {
-  position: relative;
-  touch-action: none;
-}
-
-.canvas .stage-photo {
-  height: 100%;
-  border-radius: 4px;
-  pointer-events: none;
-}
-
-.canvas .sticker {
-  cursor: grab;
-}
-
-.arranger-foot {
-  padding: 8px 14px calc(12px + env(safe-area-inset-bottom));
-}
-
 .tools {
   display: flex;
   gap: 8px;
@@ -815,10 +734,6 @@ h2.title {
   flex: 1;
   max-width: 120px;
   padding: 0 8px;
-}
-
-.tray {
-  touch-action: pan-x;
 }
 
 /* ---- grids ---- */
@@ -1249,24 +1164,6 @@ h2.title {
     margin-top: 12px;
   }
 
-  .room-main {
-    position: sticky;
-    top: 16px;
-  }
-
-  /* The picture keeps its true shape so stickers stay where they were put; it shrinks to fit the window. */
-  .hero {
-    width: fit-content;
-    max-width: 100%;
-    margin: 0 auto;
-  }
-
-  .hero .stage-photo {
-    width: auto;
-    max-width: 100%;
-    max-height: 72vh;
-  }
-
   .room-side .step {
     margin-top: 0;
   }
@@ -1297,33 +1194,6 @@ h2.title {
     margin: 0;
   }
 
-  /* arranging: canvas on the left, tools and tray in a side panel */
-  .arranger {
-    display: grid;
-    grid-template: 'bar bar' auto 'box foot' minmax(0, 1fr) / minmax(0, 1fr) 320px;
-  }
-
-  .arranger-bar {
-    grid-area: bar;
-    padding: 14px 24px;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .arranger-box {
-    grid-area: box;
-    padding: 24px;
-  }
-
-  .arranger-foot {
-    grid-area: foot;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 20px;
-    border-left: 1px solid var(--line);
-    overflow-y: auto;
-  }
-
   .tools {
     flex-wrap: wrap;
     justify-content: flex-start;
@@ -1334,17 +1204,6 @@ h2.title {
   .tools .ghost {
     flex: 1 1 40%;
     max-width: none;
-  }
-
-  .tray {
-    flex-wrap: wrap;
-    align-content: flex-start;
-    overflow: visible;
-  }
-
-  .tray .thumb {
-    width: 84px;
-    height: 84px;
   }
 
   /* looking at one picture: the picture on the left, what to do with it on the right */
@@ -1373,5 +1232,144 @@ h2.title {
 
   .recipe {
     flex-wrap: wrap;
+  }
+}
+
+/* ---- the loom: a thread of pictures, each one a live canvas with its options beneath ---- */
+
+.node {
+  margin-top: 14px;
+  scroll-margin-top: 12px;
+}
+
+.node + .node {
+  margin-top: 26px;
+}
+
+.node-pic {
+  position: relative;
+  border-radius: 12px;
+  background: var(--soft);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.node.focused .node-pic {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* A finger on the picture scrolls the page; a finger on a thing moves it. While a thing is held the picture
+   takes every touch, so a second finger anywhere can pinch and twist. */
+.canvas {
+  position: relative;
+  touch-action: pan-y;
+}
+
+.canvas.holding {
+  touch-action: none;
+}
+
+.canvas .stage-photo {
+  pointer-events: none;
+}
+
+.canvas .sticker {
+  cursor: grab;
+}
+
+/* On a finished design the things are still there to grab, just not drawn. */
+.sticker.ghost img {
+  opacity: 0;
+}
+
+/* A tap on a finished design lifts its things into view over the picture. */
+.sticker.peek {
+  outline: 1.5px dashed rgb(255 255 255 / 0.9);
+  outline-offset: 2px;
+}
+
+.sticker.peek img {
+  opacity: 0.8;
+}
+
+.open {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(20 24 30 / 0.6);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.node .tools {
+  margin: 10px 0 0;
+}
+
+.branch {
+  margin: 14px 2px 6px;
+}
+
+.options .thumb {
+  width: 112px;
+  height: 84px;
+}
+
+.options .pending {
+  display: grid;
+  place-items: center;
+}
+
+.options .pending .kao {
+  margin: 0;
+  font-size: 12px;
+}
+
+.composer .step {
+  margin-top: 20px;
+}
+
+@media (min-width: 900px) {
+  .thread {
+    min-width: 0;
+  }
+
+  /* Each picture keeps its true shape so things stay where they were put; it shrinks to fit the window. */
+  .node-pic {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .canvas .stage-photo {
+    width: auto;
+    max-width: 100%;
+    max-height: 74vh;
+  }
+
+  .room-side {
+    position: sticky;
+    top: 16px;
+  }
+
+  .room-side .composer .step {
+    margin-top: 14px;
+  }
+
+  .room-side .tray {
+    flex-wrap: wrap;
+  }
+
+  .room-side .tray .thumb {
+    width: 96px;
+    height: 96px;
+  }
+
+  .node .tools .ghost {
+    flex: 0 1 auto;
   }
 }

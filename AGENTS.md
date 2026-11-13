@@ -10,17 +10,21 @@ These came from the people who use it. They outrank convenience.
 1. **Pictures before words.** Every flow begins with a photo, never with a name or a text box. Infer names and
    labels from the image, and ask a question only when the answer is not obvious. Text input stays optional and
    visually secondary.
-2. **Things are playthings.** Whatever enters the library becomes a cut-out that can be dragged, resized, rotated
+2. **No modes.** A picture of a room is always a live canvas. There is no "edit" screen to enter and no "done"
+   to press: things are dragged where they sit, in the page.
+3. **A room is a loom.** The room photo is the top of a thread. Making a design hangs a few options beneath the
+   picture it came from, and any picture in the thread can be carried on or branched again.
+4. **Things are playthings.** Whatever enters the library becomes a cut-out that can be dragged, resized, rotated
    and removed, and it stays that way after a design is made. Never leave the user with an object baked into a
    picture that they can no longer move.
-3. **Direct manipulation for where, words for taste.** Position and size are set by hand on the canvas. Text is
+5. **Direct manipulation for where, words for taste.** Position and size are set by hand on the canvas. Text is
    for mood and style.
-4. **iPhone first.** Touch targets of at least 44px, standard gestures, no hover-only affordances. Desktop must
+6. **iPhone first.** Touch targets of at least 44px, standard gestures, no hover-only affordances. Desktop must
    work well too, with a mouse equivalent for every gesture.
-5. **Calm, Japanese, a little kawaii.** Paper white, sumi ink, indigo accent, vermilion only as a small seal.
+7. **Calm, Japanese, a little kawaii.** Paper white, sumi ink, indigo accent, vermilion only as a small seal.
    Mincho-style headings. Kaomoji are short asides in a few places, simple faces only. No pastel overload, no
    decorative Japanese text.
-6. **Never block on the model.** Naming, cut-outs and thumbnails run in the background and fall back quietly.
+8. **Never block on the model.** Naming, cut-outs and thumbnails run in the background and fall back quietly.
    Only an explicit "make a design" may wait on the image model, and it shows that it is waiting.
 
 ## Architecture
@@ -28,13 +32,17 @@ These came from the people who use it. They outrank convenience.
 - `server/index.mjs` is a dependency-free Node HTTP server. It owns storage: `DATA_DIR/db.json` plus image files
   in `DATA_DIR/files`. Every mutating route returns the whole state, and the client replaces its copy with it.
 - `server/gemini.mjs` holds every prompt and every Gemini call. The API key never leaves the server.
-- The front end is React with no router and no state library. `App.tsx` holds the state; `Arranger.tsx` is the
-  canvas; `cutout.ts` does pixel work in the browser, because the server has no image library.
+- The front end is React with no router and no state library. `App.tsx` holds the state; `Canvas.tsx` is a
+  picture with movable things; `cutout.ts` does pixel work in the browser, because the server has no image library.
 - A sticker placement is `{ x, y, w, rot, flip }` with `x`, `y`, `w` as fractions of the room photo, so layouts
   are independent of screen size.
-- A design stores the photo it started from (`baseId`), its placements (`layout`) and its things (`itemIds`).
-  Continuing a design that has a layout reopens `baseId` with those placements. It does not build on the
-  rendered pixels.
+- A design stores the clean picture the model was given (`baseId`), its placements (`layout`), its things
+  (`itemIds`) and, when it differs from `baseId`, the picture it hangs under in the thread (`parentId`). A
+  design made from stickers is always drawn from the clean picture plus every sticker, never on top of rendered
+  pixels, which is what keeps its things movable.
+- Which option is followed under each picture, and arrangements in progress, are browser state only.
+- The canvas sits in the page with `touch-action: pan-y`, so a finger on the picture scrolls. Touching a thing
+  holds it, and while a thing is held the canvas takes every touch so a second finger anywhere can pinch.
 - Derived images (`thumb`, `cutout`, `cutoutThumb`) are made by the browser and uploaded. An effect in `App.tsx`
   fills in any that are missing, which is how both new uploads and new designs get them.
 
