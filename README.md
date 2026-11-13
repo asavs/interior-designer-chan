@@ -3,8 +3,9 @@
 See furniture, rugs and art in your own rooms before you buy them.
 
 Add a photo of a room. Add photos of the things you are considering. Each thing becomes a cut-out you can drag,
-pinch and twist into place on the room photo, like a sticker. "Make it real" turns the rough arrangement into a
-photorealistic picture of the room, and any design can be reopened to move its pieces again.
+pinch and twist into place right on the room photo, like a sticker. "Make it real" hangs a photorealistic
+design beneath it. Carry on from there, or go back up, change something and make another to branch a different
+way: everything in every picture stays movable.
 
 It runs on your own computer, keeps your photos there, and is built for an iPhone first.
 
@@ -45,18 +46,21 @@ Read from the environment or from `.env`.
 
 ## How it works
 
+- **Rooms** sit side by side: swipe the top picture sideways, or tap a room's chip, to move between them.
 - **Rooms** start from a photo. The room is named from what the photo shows, and you are asked only when that is
   not obvious.
 - **Things** are cut out when added. A plain backdrop is removed in the browser. A busy photo is sent to the image
   model, which redraws the object on a flat colour that the browser then removes.
-- **Arranging** happens on a full-screen canvas: one finger drags, two fingers resize and rotate. With a mouse,
-  a corner handle turns and resizes, the scroll wheel resizes, arrow keys nudge and Delete removes.
-- **On a wide screen** the room picture sits beside the things library, and photos can be dropped onto any
-  add tile.
+- **Arranging** happens on the picture itself, in the page. One finger on a thing drags it; with a thing held,
+  two fingers anywhere resize and rotate it. With a mouse, a corner handle turns and resizes, the scroll wheel
+  resizes, arrow keys nudge and Delete removes.
 - **Make it real** sends the room photo, the rough collage and the original photos of the things to the image
   model, asking it to keep each thing where it was put and make it physically believable.
-- **Designs** remember their pieces, so reopening one brings back the original room photo with every sticker
-  still movable.
+- **A room is a thread of pictures.** The designs made from a picture sit beneath it side by side. Swipe
+  sideways, or use the arrows, to move between them; the one in view is the one the thread carries on from,
+  with its own designs beneath. Designs remember their pieces, so moving something in a
+  finished design redraws from the original photo.
+- **On a wide screen** the thread sits beside the things library, and photos can be dropped onto any add tile.
 
 ## Layout
 
@@ -64,8 +68,8 @@ Read from the environment or from `.env`.
 server/index.mjs    HTTP API, file storage, static hosting. No dependencies.
 server/gemini.mjs   Every prompt and every call to Gemini.
 server/stop.mjs     Stops the server on the app's port.
-src/App.tsx         Screens: rooms, things, the picture viewer.
-src/Arranger.tsx    The sticker canvas and its gestures.
+src/App.tsx         Screens: a room and its thread, things, the picture viewer.
+src/Canvas.tsx      A picture with movable things, and its gestures.
 src/cutout.ts       Background removal, thumbnails, the collage.
 src/api.ts          Types and the client for the HTTP API.
 src/styles.css      All styling.
