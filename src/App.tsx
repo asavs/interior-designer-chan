@@ -283,7 +283,12 @@ export default function App() {
               {state.rooms.map((r) => {
                 const cover = roomPhotos(r, state.images)[0]
                 return (
-                  <button key={r.id} className="roomchip" aria-pressed={r.id === room.id} onClick={() => setRoomId(r.id)}>
+                  <button
+                    key={r.id}
+                    className="roomchip"
+                    aria-pressed={r.id === room.id}
+                    onClick={() => setRoomId(r.id)}
+                  >
                     {cover ? <img src={thumbUrl(cover)} alt="" /> : <span className="blank" />}
                     {r.name || 'New room'}
                   </button>
@@ -458,143 +463,146 @@ function RoomView(props: {
       {!base ? (
         !props.busy && <AddZone big title="Add a photo of this room" hint="As it is now" onFiles={props.onAddPhotos} />
       ) : (
-        <>
-          <button className="base hero" aria-label="Arrange things on this picture" onClick={props.onArrange}>
-            {shown ? (
-              <img className="stage-photo" src={fileUrl(shown)} alt="" draggable={false} />
-            ) : (
-              <Stage base={base} layout={layout} items={items} />
-            )}
-            {!shown && base.kind === 'render' && <span className="tag">Continuing from a design</span>}
-            {items.length > 0 && (
-              <span className="pill">{shown ? 'Move things' : layout.length ? 'Rearrange' : 'Place things'}</span>
-            )}
-          </button>
+        <div className="room-grid">
+          <div className="room-main">
+            <button className="base hero" aria-label="Arrange things on this picture" onClick={props.onArrange}>
+              {shown ? (
+                <img className="stage-photo" src={fileUrl(shown)} alt="" draggable={false} />
+              ) : (
+                <Stage base={base} layout={layout} items={items} />
+              )}
+              {!shown && base.kind === 'render' && <span className="tag">Continuing from a design</span>}
+              {items.length > 0 && (
+                <span className="pill">{shown ? 'Move things' : layout.length ? 'Rearrange' : 'Place things'}</span>
+              )}
+            </button>
 
-          <div className="strip views">
-            {photos.map((p) => (
-              <button
-                key={p.id}
-                className="thumb"
-                aria-pressed={p.id === base.id}
-                aria-label={p.id === base.id ? 'Open this photo' : 'Use this view'}
-                onClick={() =>
-                  p.id === base.id && !shown
-                    ? props.onView(p.id)
-                    : props.onPatch({ baseId: p.id, layout: [], ideas: [], shownId: undefined })
-                }
-              >
-                <img src={thumbUrl(p)} alt="" />
-              </button>
-            ))}
-            <AddTile label="Another angle" onFiles={props.onAddPhotos} />
-          </div>
-
-          {!room.name && !props.naming && photos.length > 0 && (
-            <section className="card question">
-              <span className="kao">(・・?)</span>
-              <h3>Which room is this?</h3>
-              <div className="suggest">
-                {ROOM_NAMES.filter((n) => !props.takenNames.includes(n)).map((n) => (
-                  <button key={n} className="chip" onClick={() => props.onRename(n)}>
-                    {n}
-                  </button>
-                ))}
-              </div>
-              <p className="fine">Or type a name above.</p>
-            </section>
-          )}
-
-          <h3 className="step">What do you want to put in here?</h3>
-          {items.length === 0 ? (
-            <AddZone
-              title="Add photos of the things"
-              hint="A rug, a poster, a table. Product photos and screenshots both work."
-              onFiles={props.onAddItems}
-            />
-          ) : (
-            <div className="strip">
-              {items.map((item) => (
+            <div className="strip views">
+              {photos.map((p) => (
                 <button
-                  key={item.id}
-                  className={'thumb pick cut' + (isCutting(item) ? ' cutting' : '')}
-                  aria-pressed={selected.includes(item.id)}
-                  aria-label={item.name || 'Thing'}
-                  title={item.name}
-                  onClick={() => props.onToggleItem(item.id)}
+                  key={p.id}
+                  className="thumb"
+                  aria-pressed={p.id === base.id}
+                  aria-label={p.id === base.id ? 'Open this photo' : 'Use this view'}
+                  onClick={() =>
+                    p.id === base.id && !shown
+                      ? props.onView(p.id)
+                      : props.onPatch({ baseId: p.id, layout: [], ideas: [], shownId: undefined })
+                  }
                 >
-                  <img src={stickerThumbUrl(item)} alt="" />
+                  <img src={thumbUrl(p)} alt="" />
                 </button>
               ))}
-              <AddTile label="Add" onFiles={props.onAddItems} />
+              <AddTile label="Another angle" onFiles={props.onAddPhotos} />
             </div>
-          )}
 
-          <div className="actions go">
-            {shown ? (
-              <button className="primary grow" onClick={props.onArrange}>
-                Move or add things
-              </button>
-            ) : layout.length > 0 ? (
-              <button className="primary grow" disabled={making} onClick={() => props.onGenerate(base.id)}>
-                {making ? 'Making it real…' : 'Make it real'}
-              </button>
-            ) : selected.length > 0 ? (
-              <>
-                <button className="primary grow" onClick={props.onArrange}>
-                  Place {selected.length === 1 ? 'it' : 'them'} in the room
-                </button>
-                <button className="ghost" disabled={making} onClick={() => props.onGenerate(base.id)}>
-                  {making ? 'Placing…' : 'Place for me'}
-                </button>
-              </>
-            ) : hasWords ? (
-              <button className="primary grow" disabled={making} onClick={() => props.onGenerate(base.id)}>
-                {making ? 'Making it real…' : 'Show me'}
-              </button>
-            ) : (
-              items.length > 0 && <p className="fine">Tap the things you want to try in this room.</p>
+            {!room.name && !props.naming && photos.length > 0 && (
+              <section className="card question">
+                <span className="kao">(・・?)</span>
+                <h3>Which room is this?</h3>
+                <div className="suggest">
+                  {ROOM_NAMES.filter((n) => !props.takenNames.includes(n)).map((n) => (
+                    <button key={n} className="chip" onClick={() => props.onRename(n)}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                <p className="fine">Or type a name above.</p>
+              </section>
             )}
           </div>
-
-          <details className="words" open={hasWords || draft.ideas.length > 0 || undefined}>
-            <summary>Say something about the look</summary>
-            <textarea
-              rows={3}
-              value={draft.prompt}
-              onChange={(e) => props.onPatch({ prompt: e.target.value })}
-              placeholder="Optional. e.g. warmer light, keep it minimal, add plants by the window"
-            />
-            {draft.ideas.length > 0 && (
-              <div className="ideas">
-                {draft.ideas.map((idea) => (
+          <div className="room-side">
+            <h3 className="step">What do you want to put in here?</h3>
+            {items.length === 0 ? (
+              <AddZone
+                title="Add photos of the things"
+                hint="A rug, a poster, a table. Product photos and screenshots both work."
+                onFiles={props.onAddItems}
+              />
+            ) : (
+              <div className="strip">
+                {items.map((item) => (
                   <button
-                    key={idea.title + idea.prompt}
-                    className="idea"
-                    aria-pressed={draft.prompt === idea.prompt}
-                    onClick={() => props.onPatch({ prompt: idea.prompt })}
+                    key={item.id}
+                    className={'thumb pick cut' + (isCutting(item) ? ' cutting' : '')}
+                    aria-pressed={selected.includes(item.id)}
+                    aria-label={item.name || 'Thing'}
+                    title={item.name}
+                    onClick={() => props.onToggleItem(item.id)}
                   >
-                    <b>{idea.title}</b>
-                    <span>{idea.prompt}</span>
+                    <img src={stickerThumbUrl(item)} alt="" />
                   </button>
                 ))}
+                <AddTile label="Add" onFiles={props.onAddItems} />
               </div>
             )}
-            <div className="actions">
-              <button className="ghost" disabled={props.thinking} onClick={() => props.onSuggest(base.id)}>
-                {props.thinking ? 'Thinking…' : 'Suggest ideas'}
-              </button>
-              <div className="seg" role="group" aria-label="Quality">
-                <button aria-pressed={draft.quality === 'fast'} onClick={() => props.onPatch({ quality: 'fast' })}>
-                  Quick
+
+            <div className="actions go">
+              {shown ? (
+                <button className="primary grow" onClick={props.onArrange}>
+                  Move or add things
                 </button>
-                <button aria-pressed={draft.quality === 'best'} onClick={() => props.onPatch({ quality: 'best' })}>
-                  Best
+              ) : layout.length > 0 ? (
+                <button className="primary grow" disabled={making} onClick={() => props.onGenerate(base.id)}>
+                  {making ? 'Making it real…' : 'Make it real'}
                 </button>
-              </div>
+              ) : selected.length > 0 ? (
+                <>
+                  <button className="primary grow" onClick={props.onArrange}>
+                    Place {selected.length === 1 ? 'it' : 'them'} in the room
+                  </button>
+                  <button className="ghost" disabled={making} onClick={() => props.onGenerate(base.id)}>
+                    {making ? 'Placing…' : 'Place for me'}
+                  </button>
+                </>
+              ) : hasWords ? (
+                <button className="primary grow" disabled={making} onClick={() => props.onGenerate(base.id)}>
+                  {making ? 'Making it real…' : 'Show me'}
+                </button>
+              ) : (
+                items.length > 0 && <p className="fine">Tap the things you want to try in this room.</p>
+              )}
             </div>
-          </details>
-        </>
+
+            <details className="words" open={hasWords || draft.ideas.length > 0 || undefined}>
+              <summary>Say something about the look</summary>
+              <textarea
+                rows={3}
+                value={draft.prompt}
+                onChange={(e) => props.onPatch({ prompt: e.target.value })}
+                placeholder="Optional. e.g. warmer light, keep it minimal, add plants by the window"
+              />
+              {draft.ideas.length > 0 && (
+                <div className="ideas">
+                  {draft.ideas.map((idea) => (
+                    <button
+                      key={idea.title + idea.prompt}
+                      className="idea"
+                      aria-pressed={draft.prompt === idea.prompt}
+                      onClick={() => props.onPatch({ prompt: idea.prompt })}
+                    >
+                      <b>{idea.title}</b>
+                      <span>{idea.prompt}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="actions">
+                <button className="ghost" disabled={props.thinking} onClick={() => props.onSuggest(base.id)}>
+                  {props.thinking ? 'Thinking…' : 'Suggest ideas'}
+                </button>
+                <div className="seg" role="group" aria-label="Quality">
+                  <button aria-pressed={draft.quality === 'fast'} onClick={() => props.onPatch({ quality: 'fast' })}>
+                    Quick
+                  </button>
+                  <button aria-pressed={draft.quality === 'best'} onClick={() => props.onPatch({ quality: 'best' })}>
+                    Best
+                  </button>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
       )}
 
       {(designs.length > 0 || props.pending.length > 0) && (
@@ -644,7 +652,10 @@ function ThingsView(props: {
         <div className="grid things">
           {props.items.map((item) => (
             <div key={item.id} className="thing">
-              <button className={'tile cut' + (isCutting(item) ? ' cutting' : '')} onClick={() => props.onView(item.id)}>
+              <button
+                className={'tile cut' + (isCutting(item) ? ' cutting' : '')}
+                onClick={() => props.onView(item.id)}
+              >
                 <img src={stickerThumbUrl(item)} alt={item.name || 'Thing'} />
               </button>
               <Field
@@ -770,7 +781,13 @@ function Viewer(props: {
         {img.kind === 'item' && (
           <>
             <div className="fields">
-              <Field value={img.name} placeholder="Name" label="Name" onSave={(name) => props.onUpdate({ name })} allowEmpty />
+              <Field
+                value={img.name}
+                placeholder="Name"
+                label="Name"
+                onSave={(name) => props.onUpdate({ name })}
+                allowEmpty
+              />
               <Field
                 value={img.note}
                 placeholder="Size, price, link…"
@@ -798,8 +815,22 @@ function Viewer(props: {
 
 /** Anything wrapped in this opens the photo picker when tapped. */
 function FileLabel(props: { className?: string; onFiles: (files: File[]) => void; children: React.ReactNode }) {
+  const [over, setOver] = useState(false)
   return (
-    <label className={props.className}>
+    <label
+      className={(props.className ?? '') + (over ? ' dropping' : '')}
+      onDragOver={(e) => {
+        e.preventDefault()
+        setOver(true)
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault()
+        setOver(false)
+        const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'))
+        if (files.length) props.onFiles(files)
+      }}
+    >
       <input
         type="file"
         accept="image/*"

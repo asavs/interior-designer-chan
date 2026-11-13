@@ -98,8 +98,11 @@ export function Arranger(props: {
   useLayoutEffect(() => {
     if (!box.current || !ratio) return
     const measure = () => {
-      const { width, height } = box.current!.getBoundingClientRect()
-      const w = Math.min(width, height * ratio)
+      // The room for the picture is the box minus its padding.
+      const style = getComputedStyle(box.current!)
+      const width = box.current!.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+      const height = box.current!.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
+      const w = Math.max(0, Math.min(width, height * ratio))
       setFit({ w, h: w / ratio })
     }
     measure()
@@ -216,9 +219,38 @@ export function Arranger(props: {
   function add(item: Img) {
     const key = `${item.id}-${Date.now().toString(36)}`
     const nudge = (live.current.layout.length % 5) * 0.03
-    setLayout((all) => [...all, { key, itemId: item.id, x: 0.5 + nudge, y: 0.58 + nudge, w: 0.32, rot: 0, flip: false }])
+    setLayout((all) => [
+      ...all,
+      { key, itemId: item.id, x: 0.5 + nudge, y: 0.58 + nudge, w: 0.32, rot: 0, flip: false },
+    ])
     select(key)
   }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return select(null)
+      const p = live.current.layout.find((x) => x.key === live.current.selected)
+      if (!p) return
+      const step = e.shiftKey ? 0.02 : 0.004
+      const nudge: Record<string, [number, number]> = {
+        ArrowLeft: [-step, 0],
+        ArrowRight: [step, 0],
+        ArrowUp: [0, -step],
+        ArrowDown: [0, step],
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        setLayout((all) => all.filter((x) => x.key !== p.key))
+        select(null)
+      } else if (nudge[e.key]) {
+        change(p.key, { x: clamp(p.x + nudge[e.key][0], 0, 1), y: clamp(p.y + nudge[e.key][1], 0, 1) })
+      } else {
+        return
+      }
+      e.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const current = layout.find((p) => p.key === selected)
   const reorder = (toFront: boolean) =>
@@ -249,7 +281,9 @@ export function Arranger(props: {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
-          onWheel={(e) => current && change(current.key, { w: clamp(current.w * Math.exp(-e.deltaY * 0.0015), 0.04, 2.5) })}
+          onWheel={(e) =>
+            current && change(current.key, { w: clamp(current.w * Math.exp(-e.deltaY * 0.0015), 0.04, 2.5) })
+          }
         >
           <Stage base={props.base} layout={layout} items={props.items} selected={selected} onRatio={setRatio} />
         </div>
@@ -278,7 +312,10 @@ export function Arranger(props: {
             </button>
           </div>
         ) : (
-          <p className="fine tools">Drag to move. Pinch to resize, twist to turn.</p>
+          <p className="fine tools">
+            <span className="touch-only">Drag to move. Pinch to resize, twist to turn.</span>
+            <span className="mouse-only">Drag to move. Corner handle turns and resizes. Arrow keys nudge.</span>
+          </p>
         )}
         <div className="strip tray">
           {props.items.map((item) => (

@@ -55,8 +55,13 @@ export const api = {
   guessItemName: (id: string) => call<Changed>('POST', `/api/images/${id}/guess-name`, {}),
   renameRoom: (id: string, name: string) => call<Changed>('PATCH', `/api/rooms/${id}`, { name }),
   deleteRoom: (id: string) => call<Changed>('DELETE', `/api/rooms/${id}`),
-  addImage: (body: { kind: 'room' | 'item'; roomId?: string; name?: string; dataUrl: string; cutoutDataUrl?: string }) =>
-    call<Changed>('POST', '/api/images', body),
+  addImage: (body: {
+    kind: 'room' | 'item'
+    roomId?: string
+    name?: string
+    dataUrl: string
+    cutoutDataUrl?: string
+  }) => call<Changed>('POST', '/api/images', body),
   updateImage: (id: string, patch: { name?: string; note?: string; favorite?: boolean }) =>
     call<Changed>('PATCH', `/api/images/${id}`, patch),
   setCutout: (id: string, dataUrl: string | null) => call<Changed>('PUT', `/api/images/${id}/cutout`, { dataUrl }),
@@ -73,8 +78,7 @@ export const api = {
     quality: Quality
     layout?: Placement[]
     guideDataUrl?: string
-  }) =>
-    call<Changed>('POST', '/api/render', body),
+  }) => call<Changed>('POST', '/api/render', body),
   ideas: (body: { baseId: string; itemIds: string[] }) => call<{ ideas: Idea[] }>('POST', '/api/ideas', body),
 }
 
@@ -86,8 +90,7 @@ export const fileUrl = (img: Img) => `/files/${img.file}`
 export const stickerUrl = (img: Img) => `/files/${img.cutout ?? img.file}`
 /** Small versions of the two above. Use these anywhere the picture is shown as a tile. */
 export const thumbUrl = (img: Img) => `/files/${img.thumb ?? img.file}`
-export const stickerThumbUrl = (img: Img) =>
-  img.cutout ? `/files/${img.cutoutThumb ?? img.cutout}` : thumbUrl(img)
+export const stickerThumbUrl = (img: Img) => (img.cutout ? `/files/${img.cutoutThumb ?? img.cutout}` : thumbUrl(img))
 
 /** Phone photos are far larger than the image model needs; shrink before upload. */
 export async function toDataUrl(file: File, maxSide = 2048): Promise<string> {
