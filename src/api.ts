@@ -22,8 +22,6 @@ export type Img = {
   favorite?: boolean
   /** Designs: the clean picture the model was given. */
   baseId?: string
-  /** Designs: the picture in the thread this was branched from, when that is not baseId. */
-  parentId?: string
   itemIds?: string[]
   layout?: Placement[]
   prompt?: string
@@ -71,14 +69,8 @@ export const api = {
   setThumb: (id: string, body: { dataUrl?: string; cutoutDataUrl?: string }) =>
     call<Changed>('PUT', `/api/images/${id}/thumb`, body),
   deleteImage: (id: string) => call<Changed>('DELETE', `/api/images/${id}`),
-  render: (body: {
-    roomId: string
-    baseId: string
-    parentId?: string
-    itemIds: string[]
-    layout?: Placement[]
-    guideDataUrl?: string
-  }) => call<Changed>('POST', '/api/render', body),
+  render: (body: { roomId: string; baseId: string; itemIds: string[]; layout?: Placement[]; guideDataUrl?: string }) =>
+    call<Changed>('POST', '/api/render', body),
 }
 
 /** A thing whose cut-out is still being made. */

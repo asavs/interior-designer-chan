@@ -277,7 +277,6 @@ const routes = {
       file,
       createdAt: Date.now(),
       baseId: body.baseId,
-      parentId: body.parentId && body.parentId !== body.baseId ? findImage(body.parentId).id : undefined,
       itemIds: items.map((i) => i.id),
       layout: guide ? layout : undefined,
       prompt,

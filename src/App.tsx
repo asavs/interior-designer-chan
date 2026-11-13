@@ -25,45 +25,35 @@ import {
 import { Canvas } from './Canvas'
 import { composeGuide, cutOut, shrink } from './cutout'
 
-type Pending = { key: number; parentId: string }
+type Pending = { key: number; roomId: string }
 
-// A room is a loom. Its photo is the top of a thread; every design hangs under the picture it was made from,
-// and any picture in the thread can be branched again.
-const parentOf = (design: Img) => design.parentId ?? design.baseId
-const designsUnder = (node: Img, images: Img[]) =>
-  images.filter((i) => i.kind === 'render' && parentOf(i) === node.id).sort((a, b) => a.createdAt - b.createdAt)
+// The app is a grid of pictures with one on screen at a time. Sideways is another room. Up and down are the
+// versions of this room: its photo first, then each design made from it, oldest to newest.
 
-/** The photo a room's thread starts from. */
-const topOf = (room: Room, images: Img[]) =>
+/** The photo a room starts from. */
+const photoOf = (room: Room, images: Img[]) =>
   images.filter((i) => i.roomId === room.id && i.kind === 'room').sort((a, b) => a.createdAt - b.createdAt)[0] as
     Img | undefined
 
-/** The picture a node's things are placed on: the untouched photo for a design made from stickers. */
-const cleanOf = (node: Img, images: Img[]) =>
-  (node.kind === 'render' && node.layout?.length ? images.find((i) => i.id === node.baseId) : undefined) ?? node
-
-/** The thread from a room photo down through the followed design at each level. */
-function threadFrom(top: Img, images: Img[], chosen: Record<string, string>) {
-  const thread = [top]
-  for (let node = top; thread.length < 60;) {
-    const designs = designsUnder(node, images)
-    const next = designs.find((d) => d.id === chosen[node.id]) ?? designs[designs.length - 1]
-    if (!next) break
-    thread.push(next)
-    node = next
-  }
-  return thread
+/** A room's pictures, top to bottom: the photo, then its designs in the order they were made. */
+function versionsOf(room: Room, images: Img[]) {
+  const photo = photoOf(room, images)
+  if (!photo) return []
+  const designs = images.filter((i) => i.roomId === room.id && i.kind === 'render')
+  return [photo, ...designs.sort((a, b) => a.createdAt - b.createdAt)]
 }
+
+/** The picture a version's things are placed on: always the untouched photo. */
+const cleanOf = (node: Img, images: Img[]) =>
+  (node.kind === 'render' ? images.find((i) => i.id === node.baseId) : undefined) ?? node
 
 export default function App() {
   const [state, setState] = useState<State | null>(null)
   const [roomId, setRoomId] = useState<string | null>(null)
+  /** The version in view in each room. A room not listed shows its newest. */
+  const [at, setAt] = useState<Record<string, string>>({})
   /** Arrangements in progress, by the picture they are on. A picture not listed here shows its own. */
   const [work, setWork] = useState<Record<string, Placement[]>>({})
-  /** The design followed under each picture. */
-  const [chosen, setChosen] = useState<Record<string, string>>({})
-  /** The picture last arranged, which "Make it real" acts on. */
-  const [touched, setTouched] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending[]>([])
   const [uploading, setUploading] = useState(0)
   const [renaming, setRenaming] = useState(false)
@@ -71,7 +61,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const addRoom = useRef<HTMLInputElement>(null)
   const nextKey = useRef(0)
-  // Pictures with a design in the making. A ref, so a second tap is refused before React has re-rendered.
+  // Rooms with a design in the making. A ref, so a second tap is refused before React has re-rendered.
   const rendering = useRef(new Set<string>())
 
   async function attempt<T>(fn: () => Promise<T>): Promise<T | undefined> {
@@ -161,23 +151,24 @@ export default function App() {
   const images = state.images
   const room = state.rooms.find((r) => r.id === roomId) ?? state.rooms[0]
   const items = images.filter((i) => i.kind === 'item').sort((a, b) => b.createdAt - a.createdAt)
-  /** Rooms that have a photo, each shown by it. */
-  const tops = state.rooms.flatMap((r) => {
-    const top = topOf(r, images)
-    return top ? [{ room: r, top }] : []
-  })
-  const top = room && topOf(room, images)
-  const thread = top ? threadFrom(top, images, chosen) : []
+  /** Rooms that have a photo: the ones that can be swiped between. */
+  const rooms = state.rooms.filter((r) => photoOf(r, images))
+  /** The version in view in a room. */
+  const inView = (r: Room) => {
+    const versions = versionsOf(r, images)
+    return versions.find((v) => v.id === at[r.id]) ?? versions[versions.length - 1]
+  }
+  const versions = room ? versionsOf(room, images) : []
+  const current = room && inView(room)
 
   /** The things on a picture right now: the arrangement in progress, else the one it was made with. */
   const layoutOf = (node: Img) =>
     (work[node.id] ?? (node.kind === 'render' ? (node.layout ?? []) : [])).filter((p) =>
       items.some((i) => i.id === p.itemId),
     )
-  /** A picture with something to make: a photo with things on it, or a design whose things have moved. */
-  const makeable = (node: Img) => layoutOf(node).length > 0 && (node.kind === 'room' || node.id in work)
-  const target = thread.find((n) => n.id === touched && makeable(n)) ?? [...thread].reverse().find(makeable)
-  const making = target ? pending.some((p) => p.parentId === target.id) : false
+  /** Something to make: a photo with things on it, or a design whose things have moved. */
+  const makeable = !!current && layoutOf(current).length > 0 && (current.kind === 'room' || current.id in work)
+  const making = !!room && pending.some((p) => p.roomId === room.id)
 
   const mutate = <T extends { state: State }>(fn: () => Promise<T>) =>
     attempt(async () => {
@@ -194,22 +185,18 @@ export default function App() {
       const { [node.id]: _, ...rest } = w
       return rest
     })
-    if (layout) setTouched(node.id)
   }
 
-  /** Puts a thing on the picture in the thread that is nearest the middle of the screen. */
+  /** Puts a thing on the picture in view. */
   function drop(item: Img) {
-    const middle = innerHeight / 2
-    const distance = (node: Img) => {
-      const box = document.getElementById(`node-${node.id}`)?.getBoundingClientRect()
-      return box ? Math.abs((box.top + box.bottom) / 2 - middle) : Infinity
-    }
-    const node = [...thread].sort((a, b) => distance(a) - distance(b))[0]
-    if (!node) return
-    const layout = layoutOf(node)
+    if (!current) return
+    const layout = layoutOf(current)
     const nudge = (layout.length % 5) * 0.03
     const key = `${item.id}-${Date.now().toString(36)}`
-    arrange(node, [...layout, { key, itemId: item.id, x: 0.5 + nudge, y: 0.56 + nudge, w: 0.3, rot: 0, flip: false }])
+    arrange(current, [
+      ...layout,
+      { key, itemId: item.id, x: 0.5 + nudge, y: 0.56 + nudge, w: 0.3, rot: 0, flip: false },
+    ])
     setShelf(false)
   }
 
@@ -241,38 +228,36 @@ export default function App() {
       if (!res) return
       setState(res.state)
       setRoomId(res.id)
-      window.scrollTo({ top: 0 })
       await upload('room', [file], res.id)
       guessName('room', res.id)
     }
   }
 
-  /** Makes one design under a picture and follows it. Pressing again hangs another beside it. */
-  async function generate(node: Img) {
+  /** Makes a new version of the room from the picture in view, and moves to it. */
+  async function generate(target: Room, node: Img) {
     const layout = layoutOf(node)
     const clean = cleanOf(node, images)
-    if (!room || !layout.length || rendering.current.has(node.id)) return
-    rendering.current.add(node.id)
+    if (!layout.length || rendering.current.has(target.id)) return
+    rendering.current.add(target.id)
 
     const key = nextKey.current++
-    setPending((p) => [...p, { key, parentId: node.id }])
+    setPending((p) => [...p, { key, roomId: target.id }])
     const res = await mutate(async () => {
       const sticker = (id: string) => {
         const item = items.find((i) => i.id === id)
         return item && stickerUrl(item)
       }
       return api.render({
-        roomId: room.id,
+        roomId: target.id,
         baseId: clean.id,
-        parentId: node.id,
         itemIds: [...new Set(layout.map((p) => p.itemId))],
         layout,
         guideDataUrl: await composeGuide(fileUrl(clean), layout, sticker),
       })
     })
-    if (res) setChosen((c) => ({ ...c, [node.id]: res.id }))
+    if (res) setAt((a) => ({ ...a, [target.id]: res.id }))
     setPending((p) => p.filter((x) => x.key !== key))
-    rendering.current.delete(node.id)
+    rendering.current.delete(target.id)
   }
 
   /** Hands the picture to the phone's share sheet, where "Save Image" lives, or downloads it. */
@@ -292,25 +277,25 @@ export default function App() {
   }
 
   async function deleteRoom(target: Room) {
-    if (!confirm(`Delete ${target.name ? `"${target.name}"` : 'this room'} with all its designs?`)) return
+    if (!confirm(`Delete ${target.name ? `"${target.name}"` : 'this room'} with all its versions?`)) return
     await mutate(() => api.deleteRoom(target.id))
     setRoomId(null)
   }
 
   async function deleteImage(img: Img) {
-    if (!confirm(`Delete this ${img.kind === 'item' ? 'thing' : 'design'}?`)) return
+    if (!confirm(`Delete this ${img.kind === 'item' ? 'thing' : 'version'}?`)) return
     await mutate(() => api.deleteImage(img.id))
   }
 
+  /** One picture, filling the space it is given, with everything on it movable. */
   const picture = (node: Img) => {
     const changed = node.id in work
     const clean = cleanOf(node, images)
-    const finished = node.kind === 'render' && !!node.layout?.length && !changed && clean !== node
     return (
-      <div id={`node-${node.id}`} className="node">
+      <div className="frame">
         <Canvas
           clean={clean}
-          result={finished ? node : undefined}
+          result={node.kind === 'render' && !changed ? node : undefined}
           layout={layoutOf(node)}
           items={items}
           onChange={(layout) => arrange(node, layout)}
@@ -318,7 +303,7 @@ export default function App() {
           {node.kind === 'render' && node.favorite && <span className="heart">♥</span>}
           {node.kind === 'render' && (
             <Menu>
-              <MenuTrigger className="more" aria-label="More for this design" data-carousel-no-drag="">
+              <MenuTrigger className="more" aria-label="More for this version" data-carousel-no-drag="">
                 …
               </MenuTrigger>
               <MenuContent className="menu" align="end">
@@ -342,126 +327,106 @@ export default function App() {
     )
   }
 
+  const place = current ? versions.indexOf(current) : 0
   return (
     <div className="app">
       <header className="top">
+        {room &&
+          (renaming ? (
+            <Field
+              className="title"
+              value={room.name}
+              placeholder="Name this room"
+              label="Room name"
+              autoFocus
+              onSave={(name) => mutate(() => api.renameRoom(room.id, name))}
+              onDone={() => setRenaming(false)}
+            />
+          ) : (
+            <Menu>
+              <MenuTrigger className="title roomname">
+                {room.name || 'New room'}
+                <span aria-hidden> ▾</span>
+              </MenuTrigger>
+              <MenuContent className="menu" align="start">
+                {state.rooms.map((r) => {
+                  const cover = photoOf(r, images)
+                  return (
+                    <MenuItem key={r.id} className="menu-room" onSelect={() => setRoomId(r.id)}>
+                      {cover ? <img src={thumbUrl(cover)} alt="" /> : <span className="blank" />}
+                      {r.name || 'New room'}
+                      {r.id === room.id && <span className="tick">✓</span>}
+                    </MenuItem>
+                  )
+                })}
+                <MenuSeparator className="menu-rule" />
+                <MenuItem onSelect={() => addRoom.current?.click()}>Add a room</MenuItem>
+                <MenuItem onSelect={() => setRenaming(true)}>Rename</MenuItem>
+                <MenuItem destructive onSelect={() => deleteRoom(room)}>
+                  Delete this room
+                </MenuItem>
+              </MenuContent>
+            </Menu>
+          ))}
+        <span className="where">
+          {uploading > 0
+            ? 'Adding…'
+            : !current
+              ? ''
+              : current.kind === 'room'
+                ? 'Original'
+                : `Version ${place} of ${versions.length - 1}`}
+        </span>
         <h1>
           Designer<span lang="ja">ちゃん</span>
         </h1>
-        {uploading > 0 && <span className="status">Adding…</span>}
       </header>
 
       <FileInput ref={addRoom} onFiles={startRooms} />
 
-      <main>
-        {!room && (
+      <main className="stage">
+        {!room ? (
           <section className="start">
             <span className="kao">(・ω・)ノ</span>
             <h2>Start with a room</h2>
             <p>Add a photo of a room you want to furnish. A listing photo is perfect.</p>
             <AddZone title="Add a photo of a room" hint="Each photo becomes a room" onFiles={startRooms} />
           </section>
-        )}
-
-        {room && (
-          <>
-            <div className="roomhead">
-              {renaming ? (
-                <Field
-                  className="title"
-                  value={room.name}
-                  placeholder="Name this room"
-                  label="Room name"
-                  autoFocus
-                  onSave={(name) => mutate(() => api.renameRoom(room.id, name))}
-                  onDone={() => setRenaming(false)}
-                />
-              ) : (
-                <Menu>
-                  <MenuTrigger className="title roomname">
-                    {room.name || 'New room'}
-                    <span aria-hidden> ▾</span>
-                  </MenuTrigger>
-                  <MenuContent className="menu" align="start">
-                    {state.rooms.map((r) => {
-                      const cover = topOf(r, images)
-                      return (
-                        <MenuItem key={r.id} className="menu-room" onSelect={() => setRoomId(r.id)}>
-                          {cover ? <img src={thumbUrl(cover)} alt="" /> : <span className="blank" />}
-                          {r.name || 'New room'}
-                          {r.id === room.id && <span className="tick">✓</span>}
-                        </MenuItem>
-                      )
-                    })}
-                    <MenuSeparator className="menu-rule" />
-                    <MenuItem onSelect={() => addRoom.current?.click()}>Add a room</MenuItem>
-                    <MenuItem onSelect={() => setRenaming(true)}>Rename</MenuItem>
-                    <MenuItem destructive onSelect={() => deleteRoom(room)}>
-                      Delete this room
-                    </MenuItem>
-                  </MenuContent>
-                </Menu>
-              )}
-            </div>
-
-            {!top ? (
-              uploading === 0 && (
-                <AddZone
-                  title="Add a photo of this room"
-                  hint="As it is now"
-                  onFiles={(f) => upload('room', f, room.id)}
-                />
-              )
-            ) : (
-              <div className="thread">
-                {thread.map((node, depth) => {
-                  const parent: Img | undefined = thread[depth - 1]
-                  const designs = parent ? designsUnder(parent, images) : []
-                  return (
-                    <section key={parent ? `under-${parent.id}` : 'rooms'} className="level">
-                      {parent ? (
-                        <Side
-                          label="Designs"
-                          index={designs.indexOf(node)}
-                          count={designs.length}
-                          making={pending.some((p) => p.parentId === parent.id)}
-                          onIndex={(i) => designs[i] && setChosen((c) => ({ ...c, [parent.id]: designs[i].id }))}
-                        >
-                          {designs.map((d) => (
-                            <CarouselItem key={d.id} className="slide">
-                              {picture(d)}
-                            </CarouselItem>
-                          ))}
-                        </Side>
-                      ) : (
-                        <Side
-                          label="Rooms"
-                          index={tops.findIndex((t) => t.room.id === room.id)}
-                          count={tops.length}
-                          onIndex={(i) => tops[i] && setRoomId(tops[i].room.id)}
-                        >
-                          {tops.map((t) => (
-                            <CarouselItem key={t.room.id} className="slide">
-                              {picture(t.top)}
-                            </CarouselItem>
-                          ))}
-                        </Side>
-                      )}
-
-                      {depth === thread.length - 1 && pending.some((p) => p.parentId === node.id) && (
-                        <div className="node-pic pending making">
-                          <span>
-                            <span className="kao">(๑•̀ㅂ•́)و</span>
-                            Making it real…
-                          </span>
-                        </div>
-                      )}
-                    </section>
-                  )
-                })}
-              </div>
-            )}
-          </>
+        ) : !current ? (
+          uploading === 0 && (
+            <AddZone title="Add a photo of this room" hint="As it is now" onFiles={(f) => upload('room', f, room.id)} />
+          )
+        ) : (
+          <Pager
+            label="Rooms"
+            index={rooms.findIndex((r) => r.id === room.id)}
+            count={rooms.length}
+            onIndex={(i) => rooms[i] && setRoomId(rooms[i].id)}
+          >
+            {rooms.map((r) => (
+              <CarouselItem key={r.id} className="slide">
+                {r.id === room.id ? (
+                  <Pager
+                    vertical
+                    label="Versions"
+                    index={place}
+                    count={versions.length}
+                    making={making}
+                    onIndex={(i) => versions[i] && setAt((a) => ({ ...a, [room.id]: versions[i].id }))}
+                  >
+                    {versions.map((v) => (
+                      <CarouselItem key={v.id} className="slide">
+                        {picture(v)}
+                      </CarouselItem>
+                    ))}
+                  </Pager>
+                ) : (
+                  // A neighbouring room shows only the version it was left on, until it is the room in view.
+                  picture(inView(r))
+                )}
+              </CarouselItem>
+            ))}
+          </Pager>
         )}
       </main>
 
@@ -478,7 +443,7 @@ export default function App() {
               <div key={item.id} className="thing">
                 <button
                   className={'tile cut' + (isCutting(item) ? ' cutting' : '')}
-                  disabled={isCutting(item) || !top}
+                  disabled={isCutting(item) || !current}
                   aria-label={`Put ${item.name || 'this thing'} in the picture`}
                   onClick={() => drop(item)}
                 >
@@ -534,7 +499,7 @@ export default function App() {
               <button
                 key={item.id}
                 className={'thumb cut' + (isCutting(item) ? ' cutting' : '')}
-                disabled={isCutting(item) || !top}
+                disabled={isCutting(item) || !current}
                 aria-label={`Put ${item.name || 'this thing'} in the picture`}
                 title={item.name}
                 onClick={() => drop(item)}
@@ -547,8 +512,8 @@ export default function App() {
               <span>{items.length ? 'Add' : 'Add things'}</span>
             </FileLabel>
           </div>
-          {target && (
-            <button className="primary make" disabled={making} onClick={() => generate(target)}>
+          {(makeable || making) && current && (
+            <button className="primary make" disabled={making} onClick={() => generate(room, current)}>
               {making ? 'Making…' : 'Make it real'}
             </button>
           )}
@@ -568,12 +533,12 @@ export default function App() {
 }
 
 /**
- * Pictures side by side: the designs made under one picture, or the rooms themselves. A sideways swipe, the
- * dots, a mouse drag or the arrow keys move between them, and the one in view is the one the page carries on
- * from.
+ * One picture at a time, with more in one direction: rooms sideways, or a room's versions up and down. A
+ * swipe, the dots, a mouse drag, the wheel or the arrow keys move between them.
  */
-function Side(props: {
-  label: 'Designs' | 'Rooms'
+function Pager(props: {
+  label: 'Rooms' | 'Versions'
+  vertical?: boolean
   index: number
   count: number
   making?: boolean
@@ -583,8 +548,9 @@ function Side(props: {
   const controller = useMemo(() => createCarouselController(), [])
   const page = props.index + 1
 
-  // Keep the carousel on the followed picture: when it opens, when a new design arrives, and when a dot or
-  // the room menu picks one. It waits until the slides are measured, since a page set before that is dropped.
+  // Keep the pager on the picture the app says is in view: when it opens, when a new version arrives, and when
+  // a dot or the room menu picks one. It waits until the slides are measured, since a page set before that is
+  // dropped.
   useEffect(() => {
     let frame = 0
     let tries = 0
@@ -596,39 +562,26 @@ function Side(props: {
     return () => cancelAnimationFrame(frame)
   }, [page, props.count])
 
-  // The carousel is as tall as the picture in view, not as tall as its tallest slide.
-  const root = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const view = root.current?.querySelector<HTMLElement>('.side-view')
-    const slides = [...(root.current?.querySelectorAll<HTMLElement>('.slide') ?? [])]
-    if (!view || !slides[props.index]) return
-    const fit = () => (view.style.height = `${slides[props.index].offsetHeight}px`)
-    const observer = new ResizeObserver(fit)
-    slides.forEach((slide) => observer.observe(slide))
-    fit()
-    return () => observer.disconnect()
-  }, [props.index, props.count])
-
   const several = props.count > 1
   return (
     <Carousel
-      ref={root}
-      className="side"
+      className={'pager' + (props.vertical ? ' vertical' : '')}
       aria-label={props.label}
+      orientation={props.vertical ? 'vertical' : 'horizontal'}
       controller={controller}
       defaultPage={page}
       onPageChange={(next) => next - 1 !== props.index && props.onIndex(next - 1)}
     >
-      <CarouselViewport className="side-view">
-        <CarouselContent className="side-row">{props.children}</CarouselContent>
+      <CarouselViewport className="pager-view">
+        <CarouselContent className="pager-row">{props.children}</CarouselContent>
       </CarouselViewport>
       {several && (
         <>
-          <CarouselPrevious className="arrow prev" aria-label="Previous">
-            ‹
+          <CarouselPrevious className="arrow prev" aria-label={`Previous ${props.vertical ? 'version' : 'room'}`}>
+            {props.vertical ? '︿' : '‹'}
           </CarouselPrevious>
-          <CarouselNext className="arrow next" aria-label="Next">
-            ›
+          <CarouselNext className="arrow next" aria-label={`Next ${props.vertical ? 'version' : 'room'}`}>
+            {props.vertical ? '﹀' : '›'}
           </CarouselNext>
         </>
       )}
@@ -637,12 +590,14 @@ function Side(props: {
           {Array.from({ length: props.count }, (_, i) => (
             <button
               key={i}
-              aria-label={`${props.label} ${i + 1} of ${props.count}`}
+              aria-label={
+                props.vertical ? (i === 0 ? 'Original photo' : `Version ${i}`) : `Room ${i + 1} of ${props.count}`
+              }
               aria-current={i === props.index || undefined}
               onClick={() => props.onIndex(i)}
             />
           ))}
-          {props.making && <span className="dot-making" aria-label="Making another" />}
+          {props.making && <span className="dot-making" aria-label="Making a new version" />}
         </div>
       )}
     </Carousel>

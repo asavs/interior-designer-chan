@@ -90,12 +90,6 @@ h2 {
 
 /* ---- shell ---- */
 
-.app {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 0 18px calc(var(--dock) + 28px + env(safe-area-inset-bottom));
-}
-
 .splash {
   min-height: 100dvh;
   display: grid;
@@ -104,23 +98,6 @@ h2 {
   gap: 12px;
   padding: 24px;
   text-align: center;
-  color: var(--muted);
-}
-
-.top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: calc(16px + env(safe-area-inset-top)) 0 6px;
-}
-
-.top h1 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  font: 600 18px/1 var(--serif);
-  letter-spacing: 0.02em;
   color: var(--muted);
 }
 
@@ -133,15 +110,6 @@ h2 {
   color: #fff;
   font: 600 10px/1 var(--sans);
   letter-spacing: 0.04em;
-}
-
-.status {
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.start {
-  margin-top: 28px;
 }
 
 .start h2 {
@@ -311,11 +279,6 @@ input {
 
 /* ---- the room's name, which is also the way to other rooms ---- */
 
-.roomhead {
-  display: flex;
-  margin: 6px 0 10px;
-}
-
 .title {
   margin: 0;
   font: 600 28px/1.2 var(--serif);
@@ -400,14 +363,6 @@ input.title {
 
 /* ---- the loom: a thread of pictures, each one a live canvas ---- */
 
-.level + .level {
-  margin-top: 18px;
-}
-
-.node {
-  scroll-margin-top: 12px;
-}
-
 .node-pic {
   position: relative;
   border-radius: 12px;
@@ -427,8 +382,6 @@ input.title {
 }
 
 .stage-photo {
-  width: 100%;
-  height: auto;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
@@ -552,41 +505,6 @@ input.title {
 
 /* ---- side by side: rooms, and the designs under a picture ---- */
 
-.side {
-  position: relative;
-}
-
-.side-view {
-  transition: height 0.25s ease;
-  scrollbar-width: none;
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-}
-
-.side-view::-webkit-scrollbar {
-  display: none;
-}
-
-/* Slides keep their own height, so a short picture is not stretched to match a tall neighbour. */
-.side-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.slide {
-  flex: 0 0 100%;
-  min-width: 0;
-}
-
-.dots {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 2px;
-  margin-top: 4px;
-}
-
 .dots button {
   width: 22px;
   height: 22px;
@@ -630,7 +548,6 @@ input.title {
 @media (hover: hover) and (pointer: fine) {
   .arrow {
     position: absolute;
-    top: calc(50% - 30px);
     z-index: 2;
     display: grid;
     place-items: center;
@@ -642,14 +559,6 @@ input.title {
     color: #fff;
     font-size: 22px;
     line-height: 1;
-  }
-
-  .arrow.prev {
-    left: 10px;
-  }
-
-  .arrow.next {
-    right: 10px;
   }
 
   .arrow[aria-disabled='true'] {
@@ -679,11 +588,6 @@ input.title {
   animation: shimmer 1.8s linear infinite;
 }
 
-.making {
-  min-height: 180px;
-  margin-top: 18px;
-}
-
 @keyframes shimmer {
   from {
     background-position: 100% 0;
@@ -704,7 +608,7 @@ input.title {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px max(14px, calc((100vw - 760px) / 2 + 18px)) calc(12px + env(safe-area-inset-bottom));
+  padding: 12px max(14px, calc((100vw - 900px) / 2 + 18px)) calc(12px + env(safe-area-inset-bottom));
   background: color-mix(in srgb, var(--paper) 90%, transparent);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -740,7 +644,7 @@ input.title {
   z-index: 9;
   max-height: 62vh;
   overflow-y: auto;
-  padding: 14px max(14px, calc((100vw - 760px) / 2 + 18px)) 18px;
+  padding: 14px max(14px, calc((100vw - 900px) / 2 + 18px)) 18px;
   border-top: 1px solid var(--line);
   border-radius: 16px 16px 0 0;
   background: var(--card);
@@ -850,27 +754,206 @@ input.title {
   .dot-making {
     animation: none;
   }
+}
 
-  .side-view {
-    transition: none;
+/* ---- the app is one screen tall: a title, one picture, the dock ---- */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 900px;
+  margin: 0 auto;
+  padding-bottom: calc(var(--dock) + env(safe-area-inset-bottom));
+}
+
+.top {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: calc(12px + env(safe-area-inset-top)) 18px 6px;
+}
+
+.top .title {
+  font-size: 24px;
+}
+
+/* Which version of the room this is. */
+.where {
+  flex: 1;
+  color: var(--muted);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.top h1 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font: 600 13px/1 var(--serif);
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.start {
+  height: 100%;
+  padding: 16px 18px;
+  overflow-y: auto;
+}
+
+.stage > .addzone {
+  margin: 16px 18px;
+}
+
+/* ---- one picture at a time: rooms sideways, versions up and down ---- */
+
+.pager,
+.pager-view,
+.pager-row {
+  height: 100%;
+}
+
+.pager {
+  position: relative;
+}
+
+.pager-view {
+  scrollbar-width: none;
+}
+
+.pager-view::-webkit-scrollbar {
+  display: none;
+}
+
+.pager-row {
+  display: flex;
+}
+
+.pager.vertical > .pager-view > .pager-row {
+  flex-direction: column;
+}
+
+.slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The picture is as large as its space allows, at its true shape, so things stay where they were put. */
+.frame {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 6px 22px 22px 14px;
+  container-type: size;
+}
+
+.node-pic {
+  width: fit-content;
+  box-shadow: var(--shadow);
+}
+
+.stage-photo {
+  width: auto;
+  height: auto;
+  max-width: 100cqw;
+  max-height: 100cqh;
+}
+
+/* Rooms: a row of dots under the picture. Versions: a column down its right edge, the photo first. */
+.dots {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.pager.vertical > .dots {
+  left: auto;
+  top: 0;
+  flex-direction: column;
+}
+
+.dots button {
+  width: 20px;
+  height: 20px;
+}
+
+.pager.vertical > .dots button:first-child::before {
+  border-radius: 1px;
+}
+
+.pager.vertical > .dots .dot-making {
+  margin: 7px 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pager > .arrow.prev {
+    left: 14px;
+    top: calc(50% - 20px);
+  }
+
+  .pager > .arrow.next {
+    right: 28px;
+    top: calc(50% - 20px);
+  }
+
+  .pager.vertical > .arrow {
+    left: calc(50% - 20px);
+    right: auto;
+    font-size: 15px;
+  }
+
+  .pager.vertical > .arrow.prev {
+    top: 12px;
+  }
+
+  .pager.vertical > .arrow.next {
+    top: auto;
+    bottom: 30px;
   }
 }
 
-/* On a wide screen a picture keeps its true shape and shrinks to fit the window. */
-@media (min-width: 900px) {
-  .node-pic {
-    width: fit-content;
-    max-width: 100%;
-    margin: 0 auto;
+/* The header stays on one line on a narrow phone: the name, where you are, and just the seal. */
+.roomname,
+.top h1,
+.top h1 span {
+  white-space: nowrap;
+}
+
+.top h1 {
+  flex: none;
+}
+
+@media (max-width: 480px) {
+  .top h1 {
+    font-size: 0;
   }
 
-  .stage-photo {
-    width: auto;
-    max-width: 100%;
-    max-height: 70vh;
-  }
-
-  .side-view {
-    box-shadow: none;
+  .top .title {
+    font-size: 22px;
   }
 }

@@ -3,12 +3,12 @@
 See furniture, rugs and art in your own rooms before you buy them.
 
 Add a photo of a room. Add photos of the things you are considering. Each thing becomes a cut-out you can drag,
-pinch and twist into place right on the room photo, like a sticker. "Make it real" hangs a photorealistic
-design beneath it. Carry on from there, or go back up, change something and make another to branch a different
-way: everything in every picture stays movable.
+pinch and twist into place right on the room photo, like a sticker. "Make it real" turns the arrangement into a
+photorealistic new version of the room, and everything in it stays movable.
 
-The whole app is pictures, a dock of your things, and one button. It runs on your own computer, keeps your
-photos there, and is built for an iPhone first.
+There is one picture on screen at a time. Swipe sideways for another room, up and down for the versions of this
+one. Below it is a dock of your things and, when there is something to make, one button. It runs on your own
+computer, keeps your photos there, and is built for an iPhone first.
 
 ## Run it
 
@@ -46,11 +46,11 @@ Read from the environment or from `.env`.
 
 ## How it works
 
-- **Rooms** each start from one photo and sit side by side: swipe the top picture sideways to move between
-  them. The room's name is a menu for switching, adding, renaming and deleting rooms. Rooms are named from what
-  the photo shows.
-- **Things** live in the dock at the bottom. Tap one and it lands on the picture nearest the middle of the
-  screen. Pull the dock up to see every thing, rename it, or change its cut-out.
+- **Rooms** each start from one photo. Swipe sideways to move between them. The room's name is a menu for
+  switching, adding, renaming and deleting rooms. Rooms are named from what the photo shows.
+- **Versions** of a room run top to bottom: its photo first, then each design made from it. Swipe up and down,
+  or tap the dots on the right edge.
+- **Things** live in the dock at the bottom. Tap one and it lands on the picture in view. Pull the dock up to see every thing, rename it, or change its cut-out.
 - **Cut-outs** are made when a thing is added. A plain backdrop is removed in the browser. A busy photo is sent
   to the image model, which redraws the object on a flat colour that the browser then removes.
 - **Arranging** happens on the picture itself, with no toolbar. One finger on a thing drags it; with a thing
@@ -60,11 +60,9 @@ Read from the environment or from `.env`.
 - **Make it real** appears in the dock when there is something to make. It sends the room photo, the rough
   collage and the original photos of the things to the image model, asking it to keep each thing where it was
   put and make it physically believable.
-- **A room is a thread of pictures.** The designs made from a picture sit beneath it side by side; swipe
-  sideways or tap the dots to move between them. The one in view is the one the thread carries on from, with
-  its own designs beneath. Designs remember their pieces, so moving something in a finished design redraws
-  from the original photo.
-- **"…" on a design** saves it, marks it as a favourite, or deletes it.
+- **Versions remember their pieces.** Moving something in a finished version shows the original photo with the
+  stickers on it, ready to be made again as a new version.
+- **"…" on a version** saves it, marks it as a favourite, or deletes it.
 
 ## Layout
 
@@ -72,7 +70,7 @@ Read from the environment or from `.env`.
 server/index.mjs    HTTP API, file storage, static hosting. No dependencies.
 server/gemini.mjs   Every prompt and every call to Gemini.
 server/stop.mjs     Stops the server on the app's port.
-src/App.tsx         The one screen: rooms, the thread of designs, the dock.
+src/App.tsx         The one screen: the pager of rooms and versions, the dock.
 src/Canvas.tsx      A picture with movable things, and its gestures.
 src/cutout.ts       Background removal, thumbnails, the collage.
 src/api.ts          Types and the client for the HTTP API.
